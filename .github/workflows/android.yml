@@ -23,7 +23,8 @@ jobs:
       run: chmod +x gradlew
       
     - name: Build with Gradle
-      run: ./gradlew assembleDebug
+      # --build-cache uses the Gradle Build Cache for faster builds
+      run: ./gradlew assembleDebug --build-cache
 
     - name: Upload APKs
       uses: actions/upload-artifact@v7
@@ -35,6 +36,7 @@ jobs:
 
   release:
     needs: build
+    # Only run release on push to main, not on PRs
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -58,5 +60,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        npm install -g semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/github
+        # Install semantic-release and required plugins
+        npm install semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/github
         npx semantic-release
