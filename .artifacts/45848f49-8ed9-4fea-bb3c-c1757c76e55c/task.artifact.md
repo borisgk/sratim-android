@@ -1,5 +1,6 @@
-# Task: Fix HEVC Playback Error on Emulator
+# Task: Implement TV Show Support in TV App
 
-- [x] Enable decoder fallback in `ExoPlayer` via `DefaultRenderersFactory`
-- [x] Improve playback error reporting in `PlaybackScreen`
-- [ ] Verify build and functionality on emulator
+- [ ] Create `ShowDetailScreen.kt` in `:app-tv`
+- [ ] Update `LibraryScreen.kt` in `:app-tv` for show navigation
+- [ ] Update `MainActivity.kt` in `:app-tv` with new routes
+- [ ] Verify build and D-pad navigation

@@ -1,0 +1,5 @@
+com.ru9n.sratim.mobile
+mipmap ic_launcher
+string app_name
+style Theme_Sratim
+xml network_security_config

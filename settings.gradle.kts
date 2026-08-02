@@ -23,4 +23,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Sratim"
-include(":app")
+include(":app-tv", ":core", ":core-ui", ":app-mobile")

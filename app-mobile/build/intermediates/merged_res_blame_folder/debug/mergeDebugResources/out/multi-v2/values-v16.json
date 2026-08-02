@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.ru9n.sratim.mobile.app-mobile-mergeDebugResources-63:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "/Users/borisk/.gradle/caches/9.6.1/transforms/deeeb6799b619ac262970adfb90cc39b/transformed/appcompat-1.6.1/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "5",
+                        "endColumns": "12",
+                        "endOffsets": "223"
+                    }
+                }
+            ]
+        }
+    ]
+}

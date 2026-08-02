@@ -1,27 +1,43 @@
-# Implementation Plan - Fix HEVC 10-bit Playback Error on Emulator
+# Implementation Plan - TV Show Support for Android TV
 
-The app is failing to play HEVC 10-bit content because the emulator's hardware-accelerated decoder (`c2.goldfish.hevc.decoder`) reports it cannot handle the format or crashes with `Error 0xe`. Even with decoder fallback enabled, the player may still be stuck or failing to find a viable alternative.
+Implement the Shows and Episodes display logic in the `app-tv` module, mirroring the functionality recently added to the mobile app but optimized for a television interface.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> I will explicitly filter out the buggy `c2.goldfish.hevc.decoder` for HEVC content. This will force ExoPlayer to use the standard Android software decoder (`c2.android.hevc.decoder`), which is generally more stable for high-profile content like 10-bit HEVC in an emulator environment.
+> - I will add a new `ShowDetailScreen` to the TV app.
+> - The TV navigation will be updated to handle `?episode_id=` for playback, just like the mobile app.
+> - The `LibraryScreen` on TV will now correctly navigate to either Movie or Show details.
 
 ## Proposed Changes
 
-### UI Layer
+### UI Layer (`:app-tv`)
 
-#### [MODIFY] [PlaybackScreen.kt](file:///Users/borisk/AndroidStudioProjects/Sratim/app/src/main/java/com/example/sratim/ui/playback/PlaybackScreen.kt)
-- Create a custom `MediaCodecSelector` that filters out `c2.goldfish.hevc.decoder` specifically for `video/hevc` content.
-- Inject this selector into the `DefaultRenderersFactory`.
-- This ensures that when the app encounters HEVC content, it bypasses the buggy emulator-specific decoder.
+#### [NEW] `ShowDetailScreen.kt` in `ui.details`
+- Implement a TV-optimized layout using `androidx.tv.material3`.
+- **Left/Hero Section**: Show title, overview, and high-res poster.
+- **Season Selection**: Horizontal list of seasons (using `TabRow` or `LazyRow`).
+- **Episode List**: Vertical or Grid list of episodes with stills and titles, focusable for D-pad navigation.
+
+#### [MODIFY] [LibraryScreen.kt](file:///Users/borisk/AndroidStudioProjects/Sratim/app-tv/src/main/java/com/ru9n/sratim/ui/library/LibraryScreen.kt)
+- Update `onMovieClick` to a more generic `onItemClick(id, type)`.
+- Navigate to `show/{id}` for show types.
+
+#### [MODIFY] [MainActivity.kt](file:///Users/borisk/AndroidStudioProjects/Sratim/app-tv/src/main/java/com/ru9n/sratim/MainActivity.kt)
+- Add `show/{showId}` route using the shared `ShowDetailViewModel`.
+- Update `playback` routes to support both `playback/movie/{id}` and `playback/episode/{id}` to match the mobile app's structure for consistency.
+
+### Core Logic (`:core`)
+- The `ShowDetailViewModel` and `PlaybackViewModel` are already shared and support the required logic.
 
 ## Verification Plan
 
 ### Automated Tests
-- Verify that the app builds successfully.
+- `gradlew :app-tv:assembleDebug`
 
 ### Manual Verification
-- Deploy to the emulator.
-- Try to play the 10-bit HEVC movie that previously failed.
-- Check Logcat for "SratimPlayback" and "MediaCodec" logs to confirm that `c2.android.hevc.decoder` (or another fallback) is being used instead of `c2.goldfish.hevc.decoder`.
+1. Open the TV app.
+2. Navigate to a "Shows" library.
+3. Select a show.
+4. Verify D-pad navigation between seasons and episodes.
+5. Play an episode and verify it starts correctly in the TV player.

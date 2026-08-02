@@ -1,23 +1,36 @@
-# Walkthrough - Fixed HEVC Playback on Emulator
+# Walkthrough - TV Show Support for Android TV
 
-I have improved the video player's resilience when encountering codec issues on the emulator.
+I have successfully ported the TV Show and Episode display logic to the Android TV app, providing a consistent experience across both Mobile and TV platforms while optimizing for the television interface.
 
 ## Changes Made
 
-### Robust Playback Configuration
-- **Decoder Fallback**: Configured `ExoPlayer` with `setEnableDecoderFallback(true)`. This tells the player to automatically try alternative decoders (like software-based ones) if the initial hardware decoder fails or reports that it cannot handle the content.
-- **Detailed Error Handling**: Updated the error listener in `PlaybackScreen` to detect codec-specific failures. If a playback error occurs, the log and UI will now provide more context about whether it was a decoder issue.
+### TV-Optimized UI Improvements
+- **New Show Details Screen**: Created `ShowDetailScreen.kt` specifically for Android TV:
+    - **Hero Layout**: Displays the show's backdrop, poster, and high-level overview.
+    - **Season Navigation**: Uses TV-native `FilterChip` components in a horizontal list for easy D-pad switching between seasons.
+    - **Focusable Episode List**: A vertical list of episodes using `Card` components that are fully focusable, showing thumbnails, titles, and summaries.
+- **D-Pad Support**: All interactive elements (FilterChips, Episode Cards) are designed for seamless navigation using a TV remote.
+
+### Smart Navigation & Routing
+- **Library Integration**: Updated the TV `LibraryScreen` to detect if a selected item is a "movie" or a "show" and route the user to the appropriate detail page.
+- **Unified Playback Path**: Aligned the TV app's navigation structure with the mobile app. It now supports:
+    - `playback/movie/{id}`
+    - `playback/episode/{id}`
+  This ensures the `PlaybackViewModel` receives the correct parameters to request the right media stream from the server.
+
+### Shared Logic Verification
+- Confirmed that the shared `ShowDetailViewModel` correctly serves data to the TV interface, including the grouped season mapping and image URL generation logic.
 
 ## Verification Results
 
 ### Build Success
-The project compiles successfully with the new `ExoPlayer` configuration using `DefaultRenderersFactory`.
+- `:app-tv` compiled successfully with the new UI components and navigation routes.
 
-### Expected Behavior
-When playing HEVC content that previously crashed the emulator's hardware decoder:
-1. ExoPlayer will detect the failure of `c2.goldfish.hevc.decoder`.
-2. It will automatically switch to a software-based HEVC decoder.
-3. Playback should continue, though performance on the emulator may be slower than on physical hardware.
+### Expected Behavior on TV
+1. Open a "Shows" library on your TV.
+2. Select a series to enter the **Show Details** page.
+3. Use the D-pad to select a season; notice the episode list updates instantly.
+4. Select an episode card to start playback.
 
 > [!TIP]
-> If you still see a black screen or an error, check the Logcat for "SratimPlayback" tags. It will now show exactly which tracks are being used and any detailed codec error messages.
+> The TV app uses standard `androidx.tv.material3` components, ensuring the focus states and animations feel native to the Android TV platform.

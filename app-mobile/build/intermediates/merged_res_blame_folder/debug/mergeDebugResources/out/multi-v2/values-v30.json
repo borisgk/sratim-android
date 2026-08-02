@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.ru9n.sratim.mobile.app-mobile-mergeDebugResources-63:/values-v30/values-v30.xml",
+            "map": [
+                {
+                    "source": "/Users/borisk/.gradle/caches/9.6.1/transforms/c6a2c3fdd98dc596fd060a30c82c6039/transformed/material3-release/res/values-v30/values-v30.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "72",
+                        "endOffsets": "123"
+                    }
+                }
+            ]
+        }
+    ]
+}
