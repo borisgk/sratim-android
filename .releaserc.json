@@ -7,8 +7,8 @@
       "@semantic-release/github",
       {
         "assets": [
-          {"path": "app-tv/build/outputs/apk/debug/*.apk", "label": "Android TV Debug APK"},
-          {"path": "app-mobile/build/outputs/apk/debug/*.apk", "label": "Mobile Debug APK"}
+          {"path": "app-tv/build/outputs/apk/release/*.apk", "label": "Android TV Release APK"},
+          {"path": "app-mobile/build/outputs/apk/release/*.apk", "label": "Mobile Release APK"}
         ]
       }
     ]
