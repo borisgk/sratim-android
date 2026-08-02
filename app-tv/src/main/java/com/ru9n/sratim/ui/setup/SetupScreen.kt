@@ -83,6 +83,14 @@ fun SetupScreen(
                     onBack = viewModel::previousStep
                 )
             }
+
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "v${com.ru9n.sratim.BuildConfig.VERSION_NAME}",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
         }
     }
 }

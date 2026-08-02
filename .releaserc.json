@@ -1,0 +1,16 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {"path": "app-tv/build/outputs/apk/debug/*.apk", "label": "Android TV Debug APK"},
+          {"path": "app-mobile/build/outputs/apk/debug/*.apk", "label": "Mobile Debug APK"}
+        ]
+      }
+    ]
+  ]
+}
