@@ -17,4 +17,6 @@ local.properties
 *.png
 Refactor.md
 *.jks
+node_modules/
+**/build/
 

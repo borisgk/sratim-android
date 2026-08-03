@@ -30,6 +30,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            isDefault = true
+        }
+
+        create("staging") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = true
+        }
+
         release {
             val isCi = System.getenv("GITHUB_ACTIONS") == "true"
             if (isCi) {

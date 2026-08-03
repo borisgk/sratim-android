@@ -11,7 +11,8 @@ import java.util.concurrent.TimeUnit
 
 object NetworkClient {
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        // Only log HEADERS to avoid choking on large video byte-streams in Logcat
+        level = HttpLoggingInterceptor.Level.HEADERS
     }
 
     private fun createOkHttpClient(token: String? = null): OkHttpClient {

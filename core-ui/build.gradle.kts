@@ -18,6 +18,12 @@ android {
     buildFeatures {
         compose = true
     }
+
+    buildTypes {
+        create("staging") {
+            initWith(getByName("release"))
+        }
+    }
 }
 
 dependencies {

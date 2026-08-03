@@ -30,6 +30,18 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Enable minor optimizations in debug to help with Compose performance
+            isDefault = true
+        }
+        
+        create("staging") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug") // Still use debug key for easy install
+            isDebuggable = true
+        }
+
         release {
             val isCi = System.getenv("GITHUB_ACTIONS") == "true"
             if (isCi) {

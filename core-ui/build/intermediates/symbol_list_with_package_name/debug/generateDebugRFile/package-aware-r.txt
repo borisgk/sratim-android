@@ -1,1 +1,0 @@
-com.ru9n.sratim.core.ui
