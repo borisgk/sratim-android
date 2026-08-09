@@ -22,6 +22,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -45,14 +46,38 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
     val exoPlayer = remember(uiState.videoUrl) {
         val url = uiState.videoUrl ?: return@remember null
 
-        // Configure Data Source with authentication cookie
-        val dataSourceFactory = DefaultHttpDataSource.Factory().apply {
+        // Configure base Data Source with authentication cookie
+        val baseDataSourceFactory = DefaultHttpDataSource.Factory().apply {
             uiState.cookie?.let { cookie ->
                 setDefaultRequestProperties(mapOf("Cookie" to cookie))
             }
         }
 
-        // Configure Custom Extractor for fMP4 seeking
+        // Configure Resolving Data Source to translate byte-seeks into time-seeks (?start=X)
+        val dataSourceFactory = ResolvingDataSource.Factory(baseDataSourceFactory) { dataSpec ->
+            if (dataSpec.position > 0 && uiState.durationUs > 0 && uiState.fileSize > 0) {
+                // Calculate average bitrate
+                val bitrate = (uiState.fileSize * 8L * 1_000_000L) / uiState.durationUs
+                val startTimeSeconds = (dataSpec.position * 8) / bitrate
+                
+                android.util.Log.d("PlaybackScreen", "Translating seek: byte ${dataSpec.position} -> time ${startTimeSeconds}s")
+                
+                // IMPORTANT: We MUST reset the position to 0 because the server sends a fresh fMP4 stream
+                // starting from headers. If we keep the old position, ExoPlayer will try to skip data
+                // it actually needs or throw a Source Error. We also unset the length to avoid Range header conflicts.
+                dataSpec.buildUpon()
+                    .setUri(dataSpec.uri.buildUpon()
+                        .appendQueryParameter("start", startTimeSeconds.toString())
+                        .build())
+                    .setPosition(0)
+                    .setLength(C.LENGTH_UNSET.toLong())
+                    .build()
+            } else {
+                dataSpec
+            }
+        }
+
+        // Configure Custom Extractor for fMP4 seeking alignment
         val extractorsFactory = ExtractorsFactory {
             arrayOf(RobustSeekableFmp4Extractor(uiState.durationUs, uiState.fileSize))
         }

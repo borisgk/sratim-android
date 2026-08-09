@@ -15,6 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -71,11 +74,13 @@ fun AppNavigation(configManager: ConfigManager) {
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(navController = navController, startDestination = "setup") {
             composable("setup") {
-                val viewModel = remember { 
-                    SetupViewModel(context.applicationContext as Application, configManager) 
-                }
+                val vm: SetupViewModel = viewModel(factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return SetupViewModel(context.applicationContext as Application, configManager) as T
+                    }
+                })
                 SetupScreen(
-                    viewModel = viewModel,
+                    viewModel = vm,
                     onComplete = {
                         navController.navigate("main") {
                             popUpTo("setup") { inclusive = true }
@@ -84,11 +89,13 @@ fun AppNavigation(configManager: ConfigManager) {
                 )
             }
             composable("main") {
-                val viewModel = remember {
-                    MainViewModel(context.applicationContext as Application, configManager)
-                }
+                val vm: MainViewModel = viewModel(factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return MainViewModel(context.applicationContext as Application, configManager) as T
+                    }
+                })
                 MainScreen(
-                    viewModel = viewModel,
+                    viewModel = vm,
                     onLibraryClick = { libraryId ->
                         navController.navigate("library/$libraryId")
                     }
@@ -99,11 +106,13 @@ fun AppNavigation(configManager: ConfigManager) {
                 arguments = listOf(navArgument("libraryId") { type = NavType.IntType })
             ) { backStackEntry ->
                 val libraryId = backStackEntry.arguments?.getInt("libraryId") ?: 0
-                val viewModel = remember(libraryId) {
-                    LibraryViewModel(context.applicationContext as Application, configManager, libraryId)
-                }
+                val vm: LibraryViewModel = viewModel(key = "library_$libraryId", factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return LibraryViewModel(context.applicationContext as Application, configManager, libraryId) as T
+                    }
+                })
                 LibraryScreen(
-                    viewModel = viewModel,
+                    viewModel = vm,
                     onItemClick = { id, type ->
                         if (type == "movie") {
                             navController.navigate("movie/$id")
@@ -119,11 +128,13 @@ fun AppNavigation(configManager: ConfigManager) {
                 arguments = listOf(navArgument("showId") { type = NavType.IntType })
             ) { backStackEntry ->
                 val showId = backStackEntry.arguments?.getInt("showId") ?: 0
-                val viewModel = remember(showId) {
-                    ShowDetailViewModel(context.applicationContext as Application, configManager, showId)
-                }
+                val vm: ShowDetailViewModel = viewModel(key = "show_$showId", factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return ShowDetailViewModel(context.applicationContext as Application, configManager, showId) as T
+                    }
+                })
                 ShowDetailScreen(
-                    viewModel = viewModel,
+                    viewModel = vm,
                     onEpisodeClick = { episodeId ->
                         navController.navigate("playback/show/$showId/episode/$episodeId")
                     },
@@ -135,11 +146,13 @@ fun AppNavigation(configManager: ConfigManager) {
                 arguments = listOf(navArgument("movieId") { type = NavType.IntType })
             ) { backStackEntry ->
                 val movieId = backStackEntry.arguments?.getInt("movieId") ?: 0
-                val viewModel = remember(movieId) {
-                    MovieDetailViewModel(context.applicationContext as Application, configManager, movieId)
-                }
+                val vm: MovieDetailViewModel = viewModel(key = "movie_$movieId", factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return MovieDetailViewModel(context.applicationContext as Application, configManager, movieId) as T
+                    }
+                })
                 MovieDetailScreen(
-                    viewModel = viewModel,
+                    viewModel = vm,
                     onPlayClick = { id ->
                         navController.navigate("playback/movie/$id")
                     },
@@ -151,10 +164,12 @@ fun AppNavigation(configManager: ConfigManager) {
                 arguments = listOf(navArgument("movieId") { type = NavType.IntType })
             ) { backStackEntry ->
                 val movieId = backStackEntry.arguments?.getInt("movieId") ?: 0
-                val viewModel = remember(movieId) {
-                    PlaybackViewModel(application = context.applicationContext as Application, configManager = configManager, movieId = movieId)
-                }
-                PlaybackScreen(viewModel = viewModel)
+                val vm: PlaybackViewModel = viewModel(key = "playback_movie_$movieId", factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return PlaybackViewModel(application = context.applicationContext as Application, configManager = configManager, movieId = movieId) as T
+                    }
+                })
+                PlaybackScreen(viewModel = vm)
             }
             composable(
                 route = "playback/show/{showId}/episode/{episodeId}",
@@ -165,15 +180,17 @@ fun AppNavigation(configManager: ConfigManager) {
             ) { backStackEntry ->
                 val showId = backStackEntry.arguments?.getInt("showId") ?: 0
                 val episodeId = backStackEntry.arguments?.getInt("episodeId") ?: 0
-                val viewModel = remember(episodeId) {
-                    PlaybackViewModel(
-                        application = context.applicationContext as Application, 
-                        configManager = configManager, 
-                        showId = showId,
-                        episodeId = episodeId
-                    )
-                }
-                PlaybackScreen(viewModel = viewModel)
+                val vm: PlaybackViewModel = viewModel(key = "playback_episode_$episodeId", factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return PlaybackViewModel(
+                            application = context.applicationContext as Application, 
+                            configManager = configManager, 
+                            showId = showId,
+                            episodeId = episodeId
+                        ) as T
+                    }
+                })
+                PlaybackScreen(viewModel = vm)
             }
         }
     }
