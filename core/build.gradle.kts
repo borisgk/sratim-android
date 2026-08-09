@@ -31,4 +31,5 @@ dependencies {
     api(libs.androidx.datastore.preferences)
     api(libs.androidx.lifecycle.runtime.ktx)
     api(libs.androidx.lifecycle.viewmodel.compose)
+    api(libs.androidx.media3.exoplayer)
 }

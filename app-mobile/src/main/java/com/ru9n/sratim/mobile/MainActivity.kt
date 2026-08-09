@@ -125,7 +125,7 @@ fun AppNavigation(configManager: ConfigManager) {
                 ShowDetailScreen(
                     viewModel = viewModel,
                     onEpisodeClick = { episodeId ->
-                        navController.navigate("playback/episode/$episodeId")
+                        navController.navigate("playback/show/$showId/episode/$episodeId")
                     },
                     onBack = { navController.popBackStack() }
                 )
@@ -157,12 +157,21 @@ fun AppNavigation(configManager: ConfigManager) {
                 PlaybackScreen(viewModel = viewModel)
             }
             composable(
-                route = "playback/episode/{episodeId}",
-                arguments = listOf(navArgument("episodeId") { type = NavType.IntType })
+                route = "playback/show/{showId}/episode/{episodeId}",
+                arguments = listOf(
+                    navArgument("showId") { type = NavType.IntType },
+                    navArgument("episodeId") { type = NavType.IntType }
+                )
             ) { backStackEntry ->
+                val showId = backStackEntry.arguments?.getInt("showId") ?: 0
                 val episodeId = backStackEntry.arguments?.getInt("episodeId") ?: 0
                 val viewModel = remember(episodeId) {
-                    PlaybackViewModel(application = context.applicationContext as Application, configManager = configManager, episodeId = episodeId)
+                    PlaybackViewModel(
+                        application = context.applicationContext as Application, 
+                        configManager = configManager, 
+                        showId = showId,
+                        episodeId = episodeId
+                    )
                 }
                 PlaybackScreen(viewModel = viewModel)
             }

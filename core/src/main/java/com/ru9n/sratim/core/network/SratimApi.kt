@@ -76,7 +76,10 @@ data class MovieDetail(
     @SerializedName("backdrop_path") val backdropPath: String,
     @SerializedName("release_date") val releaseDate: String,
     @SerializedName("tmdb_id") val tmdbId: String?,
-    @SerializedName("file_size") val fileSize: Long,
+    @SerializedName("file_size") val fileSize: Long?,
+    @SerializedName("filesize") val filesize: Long?,
+    val runtime: Int?,
+    val duration: Int?,
     @SerializedName("file_path") val filePath: String
 )
 
@@ -104,5 +107,9 @@ data class Episode(
     val title: String,
     val overview: String,
     @SerializedName("still_path") val stillPath: String?,
-    @SerializedName("poster_path") val posterPath: String?
+    @SerializedName("poster_path") val posterPath: String?,
+    @SerializedName("file_size") val fileSize: Long?,
+    @SerializedName("filesize") val filesize: Long?,
+    val runtime: Int?,
+    val duration: Int?
 )

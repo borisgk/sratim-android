@@ -4,9 +4,9 @@ import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -20,12 +20,15 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.ui.PlayerView
-import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.ru9n.sratim.core.playback.RobustSeekableFmp4Extractor
 import com.ru9n.sratim.core.viewmodel.PlaybackViewModel
 
 @OptIn(UnstableApi::class)
@@ -34,69 +37,87 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    val exoPlayer = remember {
+    val exoPlayer = remember(uiState.videoUrl) {
+        val url = uiState.videoUrl ?: return@remember null
+
+        // Configure Data Source with authentication cookie
+        val dataSourceFactory = DefaultHttpDataSource.Factory().apply {
+            uiState.cookie?.let { cookie ->
+                setDefaultRequestProperties(mapOf("Cookie" to cookie))
+            }
+        }
+
+        val extractorsFactory = ExtractorsFactory {
+            arrayOf(RobustSeekableFmp4Extractor(uiState.durationUs, uiState.fileSize))
+        }
+
         val renderersFactory = DefaultRenderersFactory(context)
             .setEnableDecoderFallback(true)
 
-        ExoPlayer.Builder(context, renderersFactory).build().apply {
-            playWhenReady = true
-            
-            // Set audio attributes for movie playback
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                .build()
-            setAudioAttributes(audioAttributes, true)
+        ExoPlayer.Builder(context, renderersFactory)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(context, extractorsFactory)
+                    .setDataSourceFactory(dataSourceFactory)
+            )
+            .build().apply {
+                playWhenReady = true
+                
+                // Set audio attributes for movie playback
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build()
+                setAudioAttributes(audioAttributes, true)
 
-            // Add listener to log track info and handle errors
-            addListener(object : Player.Listener {
-                override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
-                    val hasAudio = tracks.groups.any { group ->
-                        group.type == C.TRACK_TYPE_AUDIO && group.isSelected
+                // Add listener to log track info and handle errors
+                addListener(object : Player.Listener {
+                    override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                        val hasAudio = tracks.groups.any { group ->
+                            group.type == C.TRACK_TYPE_AUDIO && group.isSelected
+                        }
+                        val hasVideo = tracks.groups.any { group ->
+                            group.type == C.TRACK_TYPE_VIDEO && group.isSelected
+                        }
+                        android.util.Log.i("SratimPlayback", "Tracks changed: Audio=$hasAudio, Video=$hasVideo")
                     }
-                    val hasVideo = tracks.groups.any { group ->
-                        group.type == C.TRACK_TYPE_VIDEO && group.isSelected
-                    }
-                    android.util.Log.i("SratimPlayback", "Tracks changed: Audio=$hasAudio, Video=$hasVideo")
-                }
 
-                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    val cause = error.cause
-                    val errorMessage = if (cause != null && cause.javaClass.name.contains("MediaCodec")) {
-                        "Codec Error: ${cause.message}. Try a different device or video format."
-                    } else {
-                        error.message ?: "Unknown playback error"
+                    override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                        val cause = error.cause
+                        val errorMessage = if (cause != null && cause.javaClass.name.contains("MediaCodec")) {
+                            "Codec Error: ${cause.message}. Try a different device or video format."
+                        } else {
+                            error.message ?: "Unknown playback error"
+                        }
+                        android.util.Log.e("SratimPlayback", "Player Error: $errorMessage", error)
                     }
-                    android.util.Log.e("SratimPlayback", "Player Error: $errorMessage", error)
-                }
-            })
-        }
+                })
+
+                val mediaItem = MediaItem.Builder()
+                    .setUri(url)
+                    .setMimeType(androidx.media3.common.MimeTypes.VIDEO_MP4)
+                    .build()
+                setMediaItem(mediaItem)
+                prepare()
+            }
     }
 
-    // Manage player lifecycle - release ONLY when screen is disposed
-    DisposableEffect(Unit) {
+    // Manage player lifecycle
+    DisposableEffect(exoPlayer) {
         onDispose {
-            exoPlayer.release()
-        }
-    }
-
-    // Load video when URL changes
-    LaunchedEffect(uiState.videoUrl) {
-        uiState.videoUrl?.let { url ->
-            val mediaItem = MediaItem.fromUri(url)
-            exoPlayer.setMediaItem(mediaItem)
-            exoPlayer.prepare()
+            exoPlayer?.release()
         }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        if (uiState.error != null) {
+        if (uiState.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        } else if (uiState.error != null) {
             Text(
                 text = uiState.error!!,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.align(Alignment.Center)
             )
-        } else if (uiState.videoUrl != null) {
+        } else if (exoPlayer != null) {
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {

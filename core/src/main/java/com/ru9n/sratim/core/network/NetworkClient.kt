@@ -20,8 +20,9 @@ object NetworkClient {
             .addInterceptor(loggingInterceptor)
             .followRedirects(false)
             .followSslRedirects(false)
-            .connectTimeout(5, TimeUnit.SECONDS)
-            .readTimeout(5, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
 
         if (!token.isNullOrBlank()) {
             builder.addInterceptor(Interceptor { chain ->

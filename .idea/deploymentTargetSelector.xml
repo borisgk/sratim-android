@@ -15,10 +15,10 @@
       </SelectionState>
       <SelectionState runConfigName="app-mobile">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-07-31T00:49:09.337655Z">
+        <DropdownSelection timestamp="2026-08-09T11:38:25.229071Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="LocalEmulator" identifier="path=/Users/borisk/.android/avd/Television_4K.avd" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=44301FDJH0023F" />
             </handle>
           </Target>
         </DropdownSelection>

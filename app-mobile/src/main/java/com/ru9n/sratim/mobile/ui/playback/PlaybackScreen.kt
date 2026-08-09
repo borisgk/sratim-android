@@ -21,9 +21,13 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.ui.PlayerView
+import com.ru9n.sratim.core.playback.RobustSeekableFmp4Extractor
 import com.ru9n.sratim.core.viewmodel.PlaybackViewModel
 
 fun Context.findActivity(): Activity? = when (this) {
@@ -38,22 +42,48 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    val exoPlayer = remember {
+    val exoPlayer = remember(uiState.videoUrl) {
+        val url = uiState.videoUrl ?: return@remember null
+
+        // Configure Data Source with authentication cookie
+        val dataSourceFactory = DefaultHttpDataSource.Factory().apply {
+            uiState.cookie?.let { cookie ->
+                setDefaultRequestProperties(mapOf("Cookie" to cookie))
+            }
+        }
+
+        // Configure Custom Extractor for fMP4 seeking
+        val extractorsFactory = ExtractorsFactory {
+            arrayOf(RobustSeekableFmp4Extractor(uiState.durationUs, uiState.fileSize))
+        }
+
         val renderersFactory = DefaultRenderersFactory(context)
             .setEnableDecoderFallback(true)
 
-        ExoPlayer.Builder(context, renderersFactory).build().apply {
-            playWhenReady = true
-            
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                .build()
-            setAudioAttributes(audioAttributes, true)
-        }
+        ExoPlayer.Builder(context, renderersFactory)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(context, extractorsFactory)
+                    .setDataSourceFactory(dataSourceFactory)
+            )
+            .build().apply {
+                playWhenReady = true
+                
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build()
+                setAudioAttributes(audioAttributes, true)
+
+                val mediaItem = MediaItem.Builder()
+                    .setUri(url)
+                    .setMimeType(androidx.media3.common.MimeTypes.VIDEO_MP4)
+                    .build()
+                setMediaItem(mediaItem)
+                prepare()
+            }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(exoPlayer) {
         val activity = context.findActivity()
         val window = activity?.window
         val originalOrientation = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -77,26 +107,20 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
                 val insetsController = WindowInsetsControllerCompat(window, window.decorView)
                 insetsController.show(WindowInsetsCompat.Type.systemBars())
             }
-            exoPlayer.release()
-        }
-    }
-
-    LaunchedEffect(uiState.videoUrl) {
-        uiState.videoUrl?.let { url ->
-            val mediaItem = MediaItem.fromUri(url)
-            exoPlayer.setMediaItem(mediaItem)
-            exoPlayer.prepare()
+            exoPlayer?.release()
         }
     }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        if (uiState.error != null) {
+        if (uiState.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        } else if (uiState.error != null) {
             Text(
                 text = uiState.error!!,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.align(Alignment.Center)
             )
-        } else if (uiState.videoUrl != null) {
+        } else if (exoPlayer != null) {
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
