@@ -151,16 +151,36 @@ class PlaybackViewModel(
         }
     }
 
+    private var lastReportedEvent: String? = null
+    private var lastReportedPositionSec: Double = -100.0
+    private var lastReportedTimeMs: Long = 0L
+
     fun reportWatchProgress(positionMs: Long, durationMs: Long, event: String = "progress") {
         viewModelScope.launch(Dispatchers.IO) {
             withContext(NonCancellable) {
                 if (positionMs < 0) return@withContext
+                val positionSec = (positionMs / 1000.0).coerceAtLeast(0.0)
+                val now = System.currentTimeMillis()
+
+                // Deduplicate rapid or redundant events:
+                // 1. If progress event arrives less than 8 seconds after the last report, skip
+                if (event == "progress" && Math.abs(positionSec - lastReportedPositionSec) < 8.0 && (now - lastReportedTimeMs) < 8_000) {
+                    return@withContext
+                }
+                // 2. If the same event arrives within 2 seconds at the same position, skip
+                if (event == lastReportedEvent && Math.abs(positionSec - lastReportedPositionSec) < 1.0 && (now - lastReportedTimeMs) < 2_000) {
+                    return@withContext
+                }
+
+                lastReportedEvent = event
+                lastReportedPositionSec = positionSec
+                lastReportedTimeMs = now
+
                 val config = configManager.configFlow.first()
                 if (!config.isValid) return@withContext
 
                 val api = NetworkClient.createApi(application, config.serverUrl, config.token) ?: return@withContext
                 try {
-                    val positionSec = (positionMs / 1000.0).coerceAtLeast(0.0)
                     val durationSec = if (durationMs > 0) {
                         durationMs / 1000.0
                     } else if (_uiState.value.durationUs > 0) {
