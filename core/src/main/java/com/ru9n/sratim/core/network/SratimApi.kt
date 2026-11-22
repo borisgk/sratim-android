@@ -21,6 +21,12 @@ interface SratimApi {
 
     @GET("api/v1/show")
     suspend fun getShowDetails(@retrofit2.http.Query("id") showId: Int): Response<ShowDetailResponse>
+
+    @GET("api/v1/recently-watched")
+    suspend fun getRecentlyWatched(): Response<RecentlyWatchedResponse>
+
+    @POST("api/watch/event")
+    suspend fun postWatchEvent(@Body event: WatchEventRequest): Response<Unit>
 }
 
 data class LoginRequest(
@@ -113,3 +119,34 @@ data class Episode(
     val runtime: Int?,
     val duration: Int?
 )
+
+data class RecentlyWatchedResponse(
+    val success: Boolean,
+    val items: List<RecentlyWatchedItem>?,
+    val error: String?
+)
+
+data class RecentlyWatchedItem(
+    val id: Int,
+    val type: String,
+    @SerializedName("show_id") val showId: Int? = null,
+    @SerializedName("show_title") val showTitle: String? = null,
+    val title: String,
+    val season: Int? = null,
+    val episode: Int? = null,
+    @SerializedName("poster_path") val posterPath: String? = null,
+    @SerializedName("backdrop_path") val backdropPath: String? = null,
+    val position: Double? = null,
+    val duration: Double? = null,
+    @SerializedName("progress_percent") val progressPercent: Double? = null,
+    @SerializedName("updated_at") val updatedAt: Long? = null
+)
+
+data class WatchEventRequest(
+    @SerializedName("movie_id") val movieId: Int? = null,
+    @SerializedName("episode_id") val episodeId: Int? = null,
+    val event: String,
+    val position: Double,
+    val duration: Double
+)
+

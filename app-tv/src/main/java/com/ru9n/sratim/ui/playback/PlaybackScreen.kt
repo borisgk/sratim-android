@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -136,13 +137,47 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
             }
     }
 
+    // Report playback progress periodically while playing
+    LaunchedEffect(exoPlayer) {
+        val player = exoPlayer ?: return@LaunchedEffect
+        while (true) {
+            kotlinx.coroutines.delay(10_000)
+            if (player.isPlaying) {
+                viewModel.reportWatchProgress(player.currentPosition, player.duration, "timeupdate")
+            }
+        }
+    }
+
     // Manage player lifecycle and keep screen awake
     DisposableEffect(exoPlayer) {
         val activity = context.findActivity()
         val window = activity?.window
         window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    exoPlayer?.let { player ->
+                        viewModel.reportWatchProgress(player.currentPosition, player.duration, "stop")
+                    }
+                }
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                exoPlayer?.let { player ->
+                    if (!isPlaying && player.playbackState != Player.STATE_ENDED) {
+                        viewModel.reportWatchProgress(player.currentPosition, player.duration, "pause")
+                    }
+                }
+            }
+        }
+        exoPlayer?.addListener(listener)
+
         onDispose {
+            exoPlayer?.let { player ->
+                viewModel.reportWatchProgress(player.currentPosition, player.duration, "stop")
+                player.removeListener(listener)
+            }
             window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             exoPlayer?.release()
         }

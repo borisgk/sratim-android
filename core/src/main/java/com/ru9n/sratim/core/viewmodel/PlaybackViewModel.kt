@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ru9n.sratim.core.data.ConfigManager
 import com.ru9n.sratim.core.network.NetworkClient
+import com.ru9n.sratim.core.network.WatchEventRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -103,6 +104,31 @@ class PlaybackViewModel(
                 }
             } else {
                 _uiState.value = PlaybackUiState(error = "Not configured", isLoading = false)
+            }
+        }
+    }
+
+    fun reportWatchProgress(positionMs: Long, durationMs: Long, event: String = "timeupdate") {
+        viewModelScope.launch {
+            if (positionMs <= 0 || durationMs <= 0) return@launch
+            val config = configManager.configFlow.first()
+            if (!config.isValid) return@launch
+
+            val api = NetworkClient.createApi(application, config.serverUrl, config.token) ?: return@launch
+            try {
+                val positionSec = positionMs / 1000.0
+                val durationSec = durationMs / 1000.0
+                val request = if (movieId != -1) {
+                    WatchEventRequest(movieId = movieId, event = event, position = positionSec, duration = durationSec)
+                } else if (episodeId != -1) {
+                    WatchEventRequest(episodeId = episodeId, event = event, position = positionSec, duration = durationSec)
+                } else null
+
+                if (request != null) {
+                    api.postWatchEvent(request)
+                }
+            } catch (e: Exception) {
+                Log.d("PlaybackVM", "Watch event report skipped: ${e.message}")
             }
         }
     }

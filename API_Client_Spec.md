@@ -172,3 +172,77 @@ player.setMediaItem(mediaItem)
 player.prepare()
 player.play()
 ```
+
+---
+
+## 7. Recently Watched
+
+Use this endpoint to retrieve the user's recently watched media items (movies and episodes) with progress.
+
+**Endpoint:** `GET /api/v1/recently-watched`
+**Headers Required:** `Cookie: session=<token>`
+
+### Success Response (200 OK)
+```json
+{
+  "success": true,
+  "items": [
+    {
+      "id": 42,
+      "type": "movie",
+      "title": "Inception",
+      "poster_path": "/9gk7adHYeDvHkCSEqAvQQsV5ZXl.jpg",
+      "backdrop_path": "/s3TBrRGB1invsyVmLjvcb4gJ0Cw.jpg",
+      "position": 3420.5,
+      "duration": 8880.0,
+      "progress_percent": 38.5,
+      "updated_at": 1700654400
+    },
+    {
+      "id": 233827,
+      "type": "episode",
+      "show_id": 10,
+      "show_title": "Greenhouse",
+      "title": "Episode 1",
+      "season": 1,
+      "episode": 1,
+      "poster_path": "/2NAdWQEmfZTqvDHC8YWrf0PffRy.jpg",
+      "position": 745.0,
+      "duration": 1200.0,
+      "progress_percent": 62.0,
+      "updated_at": 1700651200
+    }
+  ]
+}
+```
+
+---
+
+## 8. Record Watch Event (Progress Reporting)
+
+Use this endpoint to record playback progress as the user watches media.
+
+**Endpoint:** `POST /api/watch/event`
+**Headers Required:** `Cookie: session=<token>`
+**Content-Type:** `application/json`
+
+### Request Body (Movie)
+```json
+{
+  "movie_id": 42,
+  "event": "timeupdate",
+  "position": 1250.0,
+  "duration": 7200.0
+}
+```
+
+### Request Body (Episode)
+```json
+{
+  "episode_id": 233827,
+  "event": "timeupdate",
+  "position": 420.0,
+  "duration": 1500.0
+}
+```
+

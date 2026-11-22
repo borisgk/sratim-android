@@ -100,6 +100,13 @@ fun AppNavigation(configManager: ConfigManager) {
                     viewModel = vm,
                     onLibraryClick = { libraryId ->
                         navController.navigate("library/$libraryId")
+                    },
+                    onItemClick = { id, type, showId ->
+                        if (type == "movie") {
+                            navController.navigate("playback/movie/$id")
+                        } else if (showId != null) {
+                            navController.navigate("playback/show/$showId/episode/$id")
+                        }
                     }
                 )
             }

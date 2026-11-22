@@ -17,9 +17,24 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+data class RecentlyWatchedUiModel(
+    val id: Int,
+    val type: String,
+    val showId: Int? = null,
+    val showTitle: String? = null,
+    val title: String,
+    val season: Int? = null,
+    val episode: Int? = null,
+    val posterUrl: String,
+    val positionSeconds: Double,
+    val durationSeconds: Double,
+    val progressPercent: Float
+)
+
 data class MainUiState(
     val isLoading: Boolean = false,
     val libraries: List<Library> = emptyList(),
+    val recentlyWatched: List<RecentlyWatchedUiModel> = emptyList(),
     val error: String? = null
 )
 
@@ -59,6 +74,38 @@ class MainViewModel(
                 val body = response.body()
                 if (response.isSuccessful && body?.success == true) {
                     _uiState.update { it.copy(isLoading = false, libraries = body.libraries ?: emptyList()) }
+
+                    // Fetch recently watched items
+                    try {
+                        val recentResponse = api.getRecentlyWatched()
+                        if (recentResponse.isSuccessful && recentResponse.body()?.success == true) {
+                            val serverBaseUrl = NetworkClient.getBaseUrl(application, config.serverUrl)
+                            val recentItems = recentResponse.body()?.items.orEmpty().map { item ->
+                                val posterUrl = if (!item.posterPath.isNullOrEmpty()) {
+                                    "${serverBaseUrl}images/posters/w185${item.posterPath}"
+                                } else ""
+                                val progress = item.progressPercent?.toFloat() ?: if (item.duration != null && item.duration > 0 && item.position != null) {
+                                    ((item.position / item.duration) * 100.0).toFloat().coerceIn(0f, 100f)
+                                } else 0f
+                                RecentlyWatchedUiModel(
+                                    id = item.id,
+                                    type = item.type,
+                                    showId = item.showId,
+                                    showTitle = item.showTitle,
+                                    title = item.title,
+                                    season = item.season,
+                                    episode = item.episode,
+                                    posterUrl = posterUrl,
+                                    positionSeconds = item.position ?: 0.0,
+                                    durationSeconds = item.duration ?: 0.0,
+                                    progressPercent = progress
+                                )
+                            }
+                            _uiState.update { it.copy(recentlyWatched = recentItems) }
+                        }
+                    } catch (e: Exception) {
+                        Log.d("SratimNet", "Recently watched not supported or failed: ${e.message}")
+                    }
                 } else {
                     val serverError = body?.error ?: "No response body"
                     val tokenStatus = if (config.token.isEmpty()) "Empty" else "Len: ${config.token.length}"

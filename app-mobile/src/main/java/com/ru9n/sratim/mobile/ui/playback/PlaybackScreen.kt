@@ -109,6 +109,17 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
             }
     }
 
+    // Report playback progress periodically while playing
+    LaunchedEffect(exoPlayer) {
+        val player = exoPlayer ?: return@LaunchedEffect
+        while (true) {
+            kotlinx.coroutines.delay(10_000)
+            if (player.isPlaying) {
+                viewModel.reportWatchProgress(player.currentPosition, player.duration, "timeupdate")
+            }
+        }
+    }
+
     DisposableEffect(exoPlayer) {
         val activity = context.findActivity()
         val window = activity?.window
@@ -125,7 +136,30 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
             insetsController.hide(WindowInsetsCompat.Type.systemBars())
         }
 
+        val listener = object : androidx.media3.common.Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == androidx.media3.common.Player.STATE_ENDED) {
+                    exoPlayer?.let { player ->
+                        viewModel.reportWatchProgress(player.currentPosition, player.duration, "stop")
+                    }
+                }
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                exoPlayer?.let { player ->
+                    if (!isPlaying && player.playbackState != androidx.media3.common.Player.STATE_ENDED) {
+                        viewModel.reportWatchProgress(player.currentPosition, player.duration, "pause")
+                    }
+                }
+            }
+        }
+        exoPlayer?.addListener(listener)
+
         onDispose {
+            exoPlayer?.let { player ->
+                viewModel.reportWatchProgress(player.currentPosition, player.duration, "stop")
+                player.removeListener(listener)
+            }
             // Restore orientation, flags, and system bars
             activity?.requestedOrientation = originalOrientation
             window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
