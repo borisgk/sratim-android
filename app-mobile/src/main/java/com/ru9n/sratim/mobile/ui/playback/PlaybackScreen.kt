@@ -92,6 +92,7 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
             )
             .build().apply {
                 playWhenReady = true
+                setWakeMode(C.WAKE_MODE_NETWORK)
                 
                 val audioAttributes = AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -150,6 +151,7 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = exoPlayer
+                        keepScreenOn = true
                     }
                 },
                 modifier = Modifier.fillMaxSize()

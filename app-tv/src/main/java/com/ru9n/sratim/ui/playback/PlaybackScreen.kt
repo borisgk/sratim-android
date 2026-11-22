@@ -1,5 +1,9 @@
 package com.ru9n.sratim.ui.playback
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.view.WindowManager
 import androidx.annotation.OptIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -31,6 +35,12 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.ru9n.sratim.core.playback.RobustSeekableFmp4Extractor
 import com.ru9n.sratim.core.viewmodel.PlaybackViewModel
+
+fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -85,6 +95,7 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
             )
             .build().apply {
                 playWhenReady = true
+                setWakeMode(C.WAKE_MODE_NETWORK)
                 
                 // Set audio attributes for movie playback
                 val audioAttributes = AudioAttributes.Builder()
@@ -125,9 +136,14 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
             }
     }
 
-    // Manage player lifecycle
+    // Manage player lifecycle and keep screen awake
     DisposableEffect(exoPlayer) {
+        val activity = context.findActivity()
+        val window = activity?.window
+        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
         onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             exoPlayer?.release()
         }
     }
@@ -146,6 +162,7 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
                 factory = { ctx ->
                     PlayerView(ctx).apply {
                         player = exoPlayer
+                        keepScreenOn = true
                     }
                 },
                 modifier = Modifier.fillMaxSize()
