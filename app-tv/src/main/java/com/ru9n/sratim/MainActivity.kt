@@ -1,6 +1,8 @@
 package com.ru9n.sratim
 
 import android.app.Application
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,24 +13,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.navigation.NavType
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Surface
 import androidx.tv.material3.SurfaceDefaults
-import androidx.tv.material3.Text
+import com.ru9n.sratim.channel.TvHomeChannelPublisher
 import com.ru9n.sratim.core.data.ConfigManager
 import com.ru9n.sratim.core.viewmodel.*
 import com.ru9n.sratim.ui.details.MovieDetailScreen
@@ -38,12 +41,16 @@ import com.ru9n.sratim.ui.main.MainScreen
 import com.ru9n.sratim.ui.playback.PlaybackScreen
 import com.ru9n.sratim.ui.setup.SetupScreen
 import com.ru9n.sratim.ui.theme.SratimTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private var deepLinkUri by mutableStateOf<Uri?>(null)
+
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val configManager = ConfigManager(applicationContext)
+        deepLinkUri = intent?.data
 
         setContent {
             SratimTheme {
@@ -54,31 +61,81 @@ class MainActivity : ComponentActivity() {
                         containerColor = Color.Black
                     )
                 ) {
-                    AppNavigation(configManager)
+                    AppNavigation(
+                        configManager = configManager,
+                        pendingDeepLink = deepLinkUri,
+                        onDeepLinkConsumed = { deepLinkUri = null }
+                    )
                 }
             }
         }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        deepLinkUri = intent.data
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            TvHomeChannelPublisher.fetchAndPublish(applicationContext)
+        }
+    }
+}
+
+private fun parseDeepLinkRoute(uri: Uri?): String? {
+    if (uri == null || uri.scheme != "sratim") return null
+    val host = uri.host ?: return null
+    val segments = uri.pathSegments.orEmpty()
+    if (host == "playback") {
+        if (segments.size == 2 && segments[0] == "movie") {
+            val movieId = segments[1].toIntOrNull() ?: return null
+            return "playback/movie/$movieId"
+        }
+        if (segments.size == 4 && segments[0] == "show" && segments[2] == "episode") {
+            val showId = segments[1].toIntOrNull() ?: return null
+            val episodeId = segments[3].toIntOrNull() ?: return null
+            return "playback/show/$showId/episode/$episodeId"
+        }
+    }
+    return null
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-fun AppNavigation(configManager: ConfigManager) {
+fun AppNavigation(
+    configManager: ConfigManager,
+    pendingDeepLink: Uri? = null,
+    onDeepLinkConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val context = LocalContext.current
     val config by configManager.configFlow.collectAsState(initial = null)
 
-    LaunchedEffect(config) {
+    LaunchedEffect(config, pendingDeepLink) {
         val currentConfig = config ?: return@LaunchedEffect
         val currentRoute = navController.currentDestination?.route
-        
+
         if (!currentConfig.isValid && currentRoute != "setup") {
             navController.navigate("setup") {
                 popUpTo(0) { inclusive = true }
             }
-        } else if (currentConfig.isValid && (currentRoute == "setup" || currentRoute == null)) {
-            navController.navigate("main") {
-                popUpTo(0) { inclusive = true }
+        } else if (currentConfig.isValid) {
+            val deepLinkRoute = parseDeepLinkRoute(pendingDeepLink)
+            if (deepLinkRoute != null) {
+                onDeepLinkConsumed()
+                if (currentRoute == "setup" || currentRoute == null) {
+                    navController.navigate("main") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+                navController.navigate(deepLinkRoute)
+            } else if (currentRoute == "setup" || currentRoute == null) {
+                navController.navigate("main") {
+                    popUpTo(0) { inclusive = true }
+                }
             }
         }
     }
@@ -106,6 +163,15 @@ fun AppNavigation(configManager: ConfigManager) {
                         return MainViewModel(context.applicationContext as Application, configManager) as T
                     }
                 })
+                val uiState by vm.uiState.collectAsState()
+                LaunchedEffect(uiState.recentlyWatched) {
+                    if (uiState.recentlyWatched.isNotEmpty()) {
+                        TvHomeChannelPublisher.publishRecentlyWatched(
+                            context.applicationContext,
+                            uiState.recentlyWatched
+                        )
+                    }
+                }
                 MainScreen(
                     viewModel = vm,
                     onLibraryClick = { libraryId ->

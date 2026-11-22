@@ -26,6 +26,7 @@ data class RecentlyWatchedUiModel(
     val season: Int? = null,
     val episode: Int? = null,
     val posterUrl: String,
+    val backdropUrl: String = "",
     val positionSeconds: Double,
     val durationSeconds: Double,
     val progressPercent: Float
@@ -89,6 +90,9 @@ class MainViewModel(
                                 val posterUrl = if (!effectivePoster.isNullOrEmpty()) {
                                     "${serverBaseUrl}images/posters/w185$effectivePoster"
                                 } else ""
+                                val backdropUrl = if (!item.backdropPath.isNullOrEmpty()) {
+                                    "${serverBaseUrl}images/backdrops/original${item.backdropPath}"
+                                } else ""
                                 val progress = item.progressPercent?.toFloat() ?: if (item.duration != null && item.duration > 0 && item.position != null) {
                                     ((item.position / item.duration) * 100.0).toFloat().coerceIn(0f, 100f)
                                 } else 0f
@@ -101,6 +105,7 @@ class MainViewModel(
                                     season = item.season,
                                     episode = item.episode,
                                     posterUrl = posterUrl,
+                                    backdropUrl = backdropUrl,
                                     positionSeconds = item.position ?: 0.0,
                                     durationSeconds = item.duration ?: 0.0,
                                     progressPercent = progress
