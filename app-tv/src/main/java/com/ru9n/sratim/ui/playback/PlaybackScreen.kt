@@ -133,17 +133,26 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
                     .setMimeType(androidx.media3.common.MimeTypes.VIDEO_MP4)
                     .build()
                 setMediaItem(mediaItem)
+                if (uiState.resumePositionMs > 0) {
+                    android.util.Log.i("SratimPlayback", "Resuming playback at ${uiState.resumePositionMs / 1000}s")
+                    seekTo(uiState.resumePositionMs)
+                }
                 prepare()
             }
     }
 
-    // Report playback progress periodically while playing
+    // Report playback progress periodically while playing (every 10s, matching desktop player.js)
     LaunchedEffect(exoPlayer) {
         val player = exoPlayer ?: return@LaunchedEffect
+        var lastReportedSec = -1L
         while (true) {
-            kotlinx.coroutines.delay(10_000)
+            kotlinx.coroutines.delay(5_000)
             if (player.isPlaying) {
-                viewModel.reportWatchProgress(player.currentPosition, player.duration, "timeupdate")
+                val currentSec = player.currentPosition / 1000L
+                if (lastReportedSec == -1L || Math.abs(currentSec - lastReportedSec) >= 10) {
+                    lastReportedSec = currentSec
+                    viewModel.reportWatchProgress(player.currentPosition, player.duration, "progress")
+                }
             }
         }
     }
@@ -165,8 +174,22 @@ fun PlaybackScreen(viewModel: PlaybackViewModel) {
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 exoPlayer?.let { player ->
-                    if (!isPlaying && player.playbackState != Player.STATE_ENDED) {
+                    if (isPlaying) {
+                        viewModel.reportWatchProgress(player.currentPosition, player.duration, "start")
+                    } else if (player.playbackState != Player.STATE_ENDED) {
                         viewModel.reportWatchProgress(player.currentPosition, player.duration, "pause")
+                    }
+                }
+            }
+
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                    exoPlayer?.let { player ->
+                        viewModel.reportWatchProgress(newPosition.positionMs, player.duration, "seek")
                     }
                 }
             }

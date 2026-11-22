@@ -86,7 +86,9 @@ data class MovieDetail(
     @SerializedName("filesize") val filesize: Long?,
     val runtime: Int?,
     val duration: Int?,
-    @SerializedName("file_path") val filePath: String
+    @SerializedName("file_path") val filePath: String,
+    @SerializedName("resume_position") val resumePosition: Double? = null,
+    @SerializedName("position") val position: Double? = null
 )
 
 data class ShowDetailResponse(
@@ -117,7 +119,9 @@ data class Episode(
     @SerializedName("file_size") val fileSize: Long?,
     @SerializedName("filesize") val filesize: Long?,
     val runtime: Int?,
-    val duration: Int?
+    val duration: Int?,
+    @SerializedName("resume_position") val resumePosition: Double? = null,
+    @SerializedName("position") val position: Double? = null
 )
 
 data class RecentlyWatchedResponse(
