@@ -40,7 +40,7 @@ fun MovieDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         if (uiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else if (uiState.error != null) {

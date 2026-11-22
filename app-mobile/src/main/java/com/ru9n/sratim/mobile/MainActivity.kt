@@ -4,9 +4,9 @@ import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -14,6 +14,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -31,6 +32,7 @@ import com.ru9n.sratim.mobile.ui.library.LibraryScreen
 import com.ru9n.sratim.mobile.ui.main.MainScreen
 import com.ru9n.sratim.mobile.ui.playback.PlaybackScreen
 import com.ru9n.sratim.mobile.ui.setup.SetupScreen
+import com.ru9n.sratim.mobile.ui.theme.SratimTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,10 +40,10 @@ class MainActivity : ComponentActivity() {
         val configManager = ConfigManager(applicationContext)
 
         setContent {
-            MaterialTheme {
+            SratimTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = Color.Black
                 ) {
                     AppNavigation(configManager)
                 }
@@ -71,7 +73,7 @@ fun AppNavigation(configManager: ConfigManager) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         NavHost(navController = navController, startDestination = "setup") {
             composable("setup") {
                 val vm: SetupViewModel = viewModel(factory = object : ViewModelProvider.Factory {

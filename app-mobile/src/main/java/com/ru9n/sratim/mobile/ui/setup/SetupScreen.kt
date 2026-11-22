@@ -1,5 +1,6 @@
 package com.ru9n.sratim.mobile.ui.setup
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -27,10 +28,13 @@ fun SetupScreen(
         }
     }
 
-    Scaffold { padding ->
+    Scaffold(
+        containerColor = Color.Black
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color.Black)
                 .padding(padding)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
@@ -25,6 +27,7 @@ import androidx.navigation.navArgument
 import androidx.navigation.NavType
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Surface
+import androidx.tv.material3.SurfaceDefaults
 import androidx.tv.material3.Text
 import com.ru9n.sratim.core.data.ConfigManager
 import com.ru9n.sratim.core.viewmodel.*
@@ -46,7 +49,10 @@ class MainActivity : ComponentActivity() {
             SratimTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    shape = RectangleShape
+                    shape = RectangleShape,
+                    colors = SurfaceDefaults.colors(
+                        containerColor = Color.Black
+                    )
                 ) {
                     AppNavigation(configManager)
                 }
@@ -77,7 +83,7 @@ fun AppNavigation(configManager: ConfigManager) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         NavHost(navController = navController, startDestination = "setup") {
             composable("setup") {
                 val vm: SetupViewModel = viewModel(factory = object : ViewModelProvider.Factory {

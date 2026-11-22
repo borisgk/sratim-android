@@ -1,5 +1,6 @@
 package com.ru9n.sratim.mobile.ui.main
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.ru9n.sratim.core.viewmodel.MainViewModel
 
@@ -22,9 +24,16 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = Color.Black,
         topBar = {
             TopAppBar(
                 title = { Text("Libraries") },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Black,
+                    scrolledContainerColor = Color.Black,
+                    titleContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                ),
                 actions = {
                     IconButton(onClick = viewModel::fetchLibraries) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
@@ -36,7 +45,7 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black).padding(padding)) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null) {
