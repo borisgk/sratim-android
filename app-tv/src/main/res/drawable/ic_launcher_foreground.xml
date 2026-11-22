@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1080"
+    android:viewportHeight="1080">
+
+    <!-- Outer Cinema Reel Ring -->
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M540,540m-245,0a245,245 0,1 1,490 0a245,245 0,1 1,-490 0"
+        android:strokeWidth="28"
+        android:strokeColor="#0BEEF8" />
+
+    <!-- Inner Concentric Aperture Ring -->
+    <path
+        android:fillColor="#071026"
+        android:pathData="M540,540m-192,0a192,192 0,1 1,384 0a192,192 0,1 1,-384 0"
+        android:strokeWidth="10"
+        android:strokeColor="#1592A6" />
+
+    <!-- Top & Bottom Vertical Film Frame Accents -->
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M 485 358 A 188 188 0 0 1 595 358 L 575 426 A 114 114 0 0 0 505 426 Z"
+        android:strokeWidth="16"
+        android:strokeColor="#0BEEF8"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M 485 722 A 188 188 0 0 0 595 722 L 575 654 A 114 114 0 0 1 505 654 Z"
+        android:strokeWidth="16"
+        android:strokeColor="#0BEEF8"
+        android:strokeLineJoin="round" />
+
+    <!-- Left & Right Horizontal Film Frame Accents -->
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M 358 485 A 188 188 0 0 0 358 595 L 426 575 A 114 114 0 0 1 426 505 Z"
+        android:strokeWidth="16"
+        android:strokeColor="#0BEEF8"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M 722 485 A 188 188 0 0 1 722 595 L 654 575 A 114 114 0 0 0 654 505 Z"
+        android:strokeWidth="16"
+        android:strokeColor="#0BEEF8"
+        android:strokeLineJoin="round" />
+
+    <!-- Diagonal Sprocket Port Circles -->
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M424,424m-33,0a33,33 0,1 1,66 0a33,33 0,1 1,-66 0"
+        android:strokeWidth="16"
+        android:strokeColor="#0BEEF8" />
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M656,424m-33,0a33,33 0,1 1,66 0a33,33 0,1 1,-66 0"
+        android:strokeWidth="16"
+        android:strokeColor="#0BEEF8" />
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M424,656m-33,0a33,33 0,1 1,66 0a33,33 0,1 1,-66 0"
+        android:strokeWidth="16"
+        android:strokeColor="#0BEEF8" />
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M656,656m-33,0a33,33 0,1 1,66 0a33,33 0,1 1,-66 0"
+        android:strokeWidth="16"
+        android:strokeColor="#0BEEF8" />
+
+    <!-- Center Hub Ring -->
+    <path
+        android:fillColor="#0A1633"
+        android:pathData="M540,540m-106,0a106,106 0,1 1,212 0a106,106 0,1 1,-212 0"
+        android:strokeWidth="20"
+        android:strokeColor="#0BEEF8" />
+
+    <!-- Crisp Play Triangle at Core -->
+    <path
+        android:fillColor="#0BEEF8"
+        android:pathData="M 512 484 C 504 479 494 485 494 495 L 494 585 C 494 595 504 601 512 596 L 594 549 C 602 544 602 536 594 531 Z" />
+</vector>
