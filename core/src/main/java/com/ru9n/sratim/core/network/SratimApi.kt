@@ -135,6 +135,7 @@ data class RecentlyWatchedItem(
     val season: Int? = null,
     val episode: Int? = null,
     @SerializedName("poster_path") val posterPath: String? = null,
+    @SerializedName("show_poster_path") val showPosterPath: String? = null,
     @SerializedName("backdrop_path") val backdropPath: String? = null,
     val position: Double? = null,
     val duration: Double? = null,

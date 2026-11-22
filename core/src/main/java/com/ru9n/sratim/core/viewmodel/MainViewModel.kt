@@ -81,8 +81,13 @@ class MainViewModel(
                         if (recentResponse.isSuccessful && recentResponse.body()?.success == true) {
                             val serverBaseUrl = NetworkClient.getBaseUrl(application, config.serverUrl)
                             val recentItems = recentResponse.body()?.items.orEmpty().map { item ->
-                                val posterUrl = if (!item.posterPath.isNullOrEmpty()) {
-                                    "${serverBaseUrl}images/posters/w185${item.posterPath}"
+                                val effectivePoster = if (item.type == "episode") {
+                                    item.showPosterPath?.takeIf { it.isNotEmpty() } ?: item.posterPath
+                                } else {
+                                    item.posterPath
+                                }
+                                val posterUrl = if (!effectivePoster.isNullOrEmpty()) {
+                                    "${serverBaseUrl}images/posters/w185$effectivePoster"
                                 } else ""
                                 val progress = item.progressPercent?.toFloat() ?: if (item.duration != null && item.duration > 0 && item.position != null) {
                                     ((item.position / item.duration) * 100.0).toFloat().coerceIn(0f, 100f)

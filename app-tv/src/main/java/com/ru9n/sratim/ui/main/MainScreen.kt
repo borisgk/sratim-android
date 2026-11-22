@@ -88,7 +88,7 @@ fun MainScreen(
 
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 48.dp),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         items(uiState.recentlyWatched) { item ->
                             RecentlyWatchedCard(
@@ -98,7 +98,7 @@ fun MainScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(40.dp))
+                    Spacer(modifier = Modifier.height(36.dp))
                 }
 
                 Text(
@@ -137,7 +137,7 @@ fun RecentlyWatchedCard(
     onClick: () -> Unit,
 ) {
     Column(
-        modifier = Modifier.width(180.dp),
+        modifier = Modifier.width(124.dp),
     ) {
         Card(
             onClick = onClick,
@@ -162,8 +162,8 @@ fun RecentlyWatchedCard(
                     ) {
                         Text(
                             text = item.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(8.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.padding(6.dp),
                         )
                     }
                 }
@@ -173,7 +173,7 @@ fun RecentlyWatchedCard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(5.dp)
+                            .height(4.dp)
                             .align(Alignment.BottomCenter)
                             .background(Color.Black.copy(alpha = 0.6f)),
                     ) {
@@ -187,11 +187,11 @@ fun RecentlyWatchedCard(
                 }
             }
         }
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         val primaryTitle = item.showTitle ?: item.title
         Text(
             text = primaryTitle,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

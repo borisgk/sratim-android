@@ -199,11 +199,15 @@ pub fn handleGetRecentlyWatched(
                             if (!first) try json_buf.append(allocator, ',');
                             first = false;
 
-                            const show_title = sh.title orelse sh.clean_name;
+                            const show_title = sh.title;
                             const ep_title = ep.title orelse "";
-                            const poster = ep.still_path orelse ep.poster_path orelse sh.poster_path orelse "";
+                            // Prefer the high-quality vertical series poster (sh.poster_path) over the episode still
+                            const poster = sh.poster_path orelse ep.still_path orelse "";
                             const backdrop = sh.backdrop_path orelse "";
-                            const progress_pct = if (item.duration > 0) (item.position / item.duration) * 100.0 else 0.0;
+                            const progress_pct: f64 = if (item.duration > 0.0)
+                                std.math.clamp((item.position / item.duration) * 100.0, 0.0, 100.0)
+                            else
+                                0.0;
 
                             const escaped_show = try utils.escapeJsonString(allocator, show_title);
                             defer allocator.free(escaped_show);
@@ -250,3 +254,45 @@ And inside the `route()` function:
         return true;
     }
 ```
+
+---
+
+## 4. Backend Update: Using Series Poster for Episodes
+
+### Motivation
+Episodes typically only have an episode still (`still_path`), which is a 16:9 screenshot or thumbnail, often low resolution or missing. When cropped to a vertical 2:3 card in the Recently Watched carousel, it can look stretched, blurry, or awkward.
+
+In contrast, the parent show (`sh.poster_path`) always has a high-resolution, professionally composed vertical (2:3) poster. Displaying the series poster in the Recently Watched shelf provides much higher visual quality and immediate recognition for the user.
+
+### Required Zig Backend Change
+
+In `/Users/borisk/Programming/Zig/sratim/src/web/handlers/api_v1/media.zig` (around line 372):
+
+```diff
+- const poster = ep.still_path orelse sh.poster_path orelse "";
++ const poster = sh.poster_path orelse ep.still_path orelse "";
+```
+
+Optionally, you can also expose `show_poster_path` explicitly in the JSON response:
+```diff
+  const escaped_show = try utils.escapeJsonAlloc(allocator, show_title);
+  defer allocator.free(escaped_show);
+  const escaped_ep = try utils.escapeJsonAlloc(allocator, ep_title);
+  defer allocator.free(escaped_ep);
++ const show_poster = sh.poster_path orelse "";
++ const escaped_show_poster = try utils.escapeJsonAlloc(allocator, show_poster);
++ defer allocator.free(escaped_show_poster);
+  const escaped_poster = try utils.escapeJsonAlloc(allocator, poster);
+  defer allocator.free(escaped_poster);
+
+  const entry = try std.fmt.allocPrint(
+      allocator,
+-     "{{\"id\":{d},\"type\":\"episode\",\"show_id\":{d},\"show_title\":\"{s}\",\"title\":\"{s}\",\"season\":{d},\"episode\":{d},\"poster_path\":\"{s}\",\"backdrop_path\":\"{s}\",\"position\":{d:.1},\"duration\":{d:.1},\"progress_percent\":{d:.1},\"updated_at\":{d}}}",
++     "{{\"id\":{d},\"type\":\"episode\",\"show_id\":{d},\"show_title\":\"{s}\",\"title\":\"{s}\",\"season\":{d},\"episode\":{d},\"poster_path\":\"{s}\",\"show_poster_path\":\"{s}\",\"backdrop_path\":\"{s}\",\"position\":{d:.1},\"duration\":{d:.1},\"progress_percent\":{d:.1},\"updated_at\":{d}}}",
+-     .{ item.item_id, ep.show_id, escaped_show, escaped_ep, ep.season, ep.episode, escaped_poster, escaped_backdrop, item.position, item.duration, progress_pct, item.updated_at },
++     .{ item.item_id, ep.show_id, escaped_show, escaped_ep, ep.season, ep.episode, escaped_poster, escaped_show_poster, escaped_backdrop, item.position, item.duration, progress_pct, item.updated_at },
+  );
+```
+
+The Android client automatically uses `show_poster_path` (if present) or `poster_path` (which points to the series poster with this change).
+

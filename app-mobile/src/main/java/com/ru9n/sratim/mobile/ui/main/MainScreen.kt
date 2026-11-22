@@ -81,7 +81,7 @@ fun MainScreen(
                                 items(uiState.recentlyWatched) { item ->
                                     ElevatedCard(
                                         onClick = { onItemClick(item.id, item.type, item.showId) },
-                                        modifier = Modifier.width(140.dp),
+                                        modifier = Modifier.width(110.dp),
                                     ) {
                                         Column {
                                             Box(
@@ -111,7 +111,7 @@ fun MainScreen(
                                                     Box(
                                                         modifier = Modifier
                                                             .fillMaxWidth()
-                                                            .height(4.dp)
+                                                            .height(3.dp)
                                                             .align(Alignment.BottomCenter)
                                                             .background(Color.Black.copy(alpha = 0.6f)),
                                                     ) {
@@ -125,10 +125,10 @@ fun MainScreen(
                                                 }
                                             }
 
-                                            Column(modifier = Modifier.padding(8.dp)) {
+                                            Column(modifier = Modifier.padding(6.dp)) {
                                                 Text(
                                                     text = item.showTitle ?: item.title,
-                                                    style = MaterialTheme.typography.titleSmall,
+                                                    style = MaterialTheme.typography.labelMedium,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis,
                                                 )
@@ -140,7 +140,7 @@ fun MainScreen(
                                                     }
                                                     Text(
                                                         text = subtitle,
-                                                        style = MaterialTheme.typography.bodySmall,
+                                                        style = MaterialTheme.typography.labelSmall,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis,
