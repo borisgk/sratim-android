@@ -1,18 +1,19 @@
 package com.ru9n.sratim.core.viewmodel
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.ru9n.sratim.core.data.ConfigManager
-import com.ru9n.sratim.core.network.Episode
+import com.ru9n.sratim.core.data.SratimDataCache
 import com.ru9n.sratim.core.network.NetworkClient
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class ShowDetailUiState(
     val isLoading: Boolean = false,
@@ -44,7 +45,9 @@ class ShowDetailViewModel(
     private val showId: Int
 ) : AndroidViewModel(application) {
 
-    private val _uiState = MutableStateFlow(ShowDetailUiState())
+    private val _uiState = MutableStateFlow(
+        ShowDetailUiState(show = SratimDataCache.getShowUiModel(showId))
+    )
     val uiState: StateFlow<ShowDetailUiState> = _uiState.asStateFlow()
 
     init {
@@ -53,78 +56,97 @@ class ShowDetailViewModel(
 
     fun fetchShowDetails() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            
-            val config = configManager.configFlow.first()
-            val api = NetworkClient.createApi(application, config.serverUrl, config.token)
-            
+            val hasCachedShow = _uiState.value.show != null
+            _uiState.update { it.copy(isLoading = !hasCachedShow, error = null) }
+
+            val config = withContext(Dispatchers.IO) { configManager.configFlow.first() }
+            SratimDataCache.ensureSession(config)
+
+            val api = withContext(Dispatchers.IO) {
+                NetworkClient.createApi(application, config.serverUrl, config.token)
+            }
             if (api == null) {
-                _uiState.update { it.copy(isLoading = false, error = "Network error") }
+                if (!hasCachedShow) {
+                    _uiState.update { it.copy(isLoading = false, error = "Network error") }
+                } else {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
                 return@launch
             }
 
             try {
-                val response = api.getShowDetails(showId)
+                val response = withContext(Dispatchers.IO) {
+                    api.getShowDetails(showId)
+                }
                 val body = response.body()
                 val show = body?.show
-                
+
                 if (response.isSuccessful && body?.success == true && show != null) {
-                    val serverBaseUrl = NetworkClient.getBaseUrl(application, config.serverUrl)
-                    
-                    val posterUrl = if (show.posterPath.isNotBlank()) {
-                        "${serverBaseUrl}images/posters/w185/${show.posterPath.removePrefix("/")}"
-                    } else ""
-                    
-                    val backdropUrl = if (show.backdropPath.isNotBlank()) {
-                        "${serverBaseUrl}images/backdrops/original/${show.backdropPath.removePrefix("/")}"
-                    } else ""
-                    
-                    val episodes = show.episodes ?: emptyList()
-                    val seasonsMap = episodes.map { ep ->
-                        // Determine which image to use and which path template
-                        val stillUrl = when {
-                            !ep.stillPath.isNullOrBlank() -> {
-                                val path = ep.stillPath.removePrefix("/")
-                                // Correction: episode stills use backdrops/original
-                                "${serverBaseUrl}images/backdrops/original/$path"
+                    val serverBaseUrl = withContext(Dispatchers.IO) {
+                        NetworkClient.getBaseUrl(application, config.serverUrl)
+                    }
+
+                    val uiModel = withContext(Dispatchers.Default) {
+                        val posterUrl = if (show.posterPath.isNotBlank()) {
+                            "${serverBaseUrl}images/posters/w500/${show.posterPath.removePrefix("/")}"
+                        } else ""
+
+                        val backdropUrl = if (show.backdropPath.isNotBlank()) {
+                            "${serverBaseUrl}images/backdrops/w1280/${show.backdropPath.removePrefix("/")}"
+                        } else ""
+
+                        val episodes = show.episodes ?: emptyList()
+                        val seasonsMap = LinkedHashMap<Int, List<EpisodeUiModel>>()
+                        episodes
+                            .map { ep ->
+                                val stillUrl = when {
+                                    !ep.stillPath.isNullOrBlank() -> {
+                                        "${serverBaseUrl}images/backdrops/w300/${ep.stillPath.removePrefix("/")}"
+                                    }
+                                    !ep.posterPath.isNullOrBlank() -> {
+                                        "${serverBaseUrl}images/posters/w185/${ep.posterPath.removePrefix("/")}"
+                                    }
+                                    else -> ""
+                                }
+
+                                EpisodeUiModel(
+                                    id = ep.id,
+                                    season = ep.season,
+                                    episode = ep.episode,
+                                    title = ep.title,
+                                    overview = ep.overview,
+                                    stillUrl = stillUrl
+                                )
                             }
-                            !ep.posterPath.isNullOrBlank() -> {
-                                val path = ep.posterPath.removePrefix("/")
-                                // Assuming episode posters also follow high-res backdrop path
-                                "${serverBaseUrl}images/backdrops/original/$path"
+                            .groupBy { it.season }
+                            .toSortedMap()
+                            .forEach { (season, epList) ->
+                                seasonsMap[season] = epList.sortedBy { it.episode }
                             }
-                            else -> ""
-                        }
-                        
-                        if (stillUrl.isNotEmpty()) {
-                            Log.e("SratimNet", "Episode ${ep.episode} Image URL: $stillUrl")
-                        }
-                        
-                        EpisodeUiModel(
-                            id = ep.id,
-                            season = ep.season,
-                            episode = ep.episode,
-                            title = ep.title,
-                            overview = ep.overview,
-                            stillUrl = stillUrl
+
+                        ShowDetailUiModel(
+                            id = show.id,
+                            title = show.title,
+                            overview = show.overview,
+                            posterUrl = posterUrl,
+                            backdropUrl = backdropUrl,
+                            seasons = seasonsMap
                         )
-                    }.groupBy { it.season }
-                    
-                    val uiModel = ShowDetailUiModel(
-                        id = show.id,
-                        title = show.title,
-                        overview = show.overview,
-                        posterUrl = posterUrl,
-                        backdropUrl = backdropUrl,
-                        seasons = seasonsMap
-                    )
-                    
-                    _uiState.update { it.copy(isLoading = false, show = uiModel) }
-                } else {
+                    }
+
+                    SratimDataCache.putShowDetail(showId, show, uiModel)
+                    _uiState.update { it.copy(isLoading = false, show = uiModel, error = null) }
+                } else if (!hasCachedShow) {
                     _uiState.update { it.copy(isLoading = false, error = body?.error ?: "Error ${response.code()}") }
+                } else {
+                    _uiState.update { it.copy(isLoading = false) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, error = e.message ?: "Unknown error") }
+                if (!hasCachedShow) {
+                    _uiState.update { it.copy(isLoading = false, error = e.message ?: "Unknown error") }
+                } else {
+                    _uiState.update { it.copy(isLoading = false) }
+                }
             }
         }
     }

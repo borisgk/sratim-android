@@ -1,5 +1,6 @@
 package com.ru9n.sratim.ui.setup
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,13 +35,23 @@ import com.ru9n.sratim.core.viewmodel.SetupViewModel
 @Composable
 fun SetupScreen(
     viewModel: SetupViewModel,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    isSettings: Boolean = false,
+    onCancel: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(uiState.isComplete) {
         if (uiState.isComplete) {
             onComplete()
+        }
+    }
+
+    BackHandler(enabled = uiState.currentStep > 0 || onCancel != null) {
+        if (uiState.currentStep > 0) {
+            viewModel.previousStep()
+        } else {
+            onCancel?.invoke()
         }
     }
 
@@ -60,7 +71,7 @@ fun SetupScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Welcome to Sratim",
+                text = if (isSettings) "Settings" else "Welcome to Sratim",
                 style = MaterialTheme.typography.displayMedium
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -69,7 +80,9 @@ fun SetupScreen(
                 0 -> ServerStep(
                     value = uiState.serverUrl,
                     onValueChange = viewModel::onServerUrlChange,
-                    onNext = viewModel::nextStep
+                    onNext = viewModel::nextStep,
+                    onCancel = onCancel,
+                    onLogout = if (isSettings) viewModel::logout else null
                 )
                 1 -> UsernameStep(
                     value = uiState.username,
@@ -102,7 +115,9 @@ fun SetupScreen(
 fun ServerStep(
     value: String,
     onValueChange: (String) -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onCancel: (() -> Unit)? = null,
+    onLogout: (() -> Unit)? = null
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = "Step 1: Enter Server Address", style = MaterialTheme.typography.headlineSmall)
@@ -120,8 +135,22 @@ fun ServerStep(
             )
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onNext, enabled = value.isNotBlank()) {
-            Text("Next")
+        Row {
+            if (onCancel != null) {
+                Button(onClick = onCancel) {
+                    Text("Cancel")
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+            }
+            Button(onClick = onNext, enabled = value.isNotBlank()) {
+                Text("Next")
+            }
+            if (onLogout != null) {
+                Spacer(modifier = Modifier.width(16.dp))
+                Button(onClick = onLogout) {
+                    Text("Sign Out")
+                }
+            }
         }
     }
 }
@@ -201,9 +230,9 @@ fun PasswordStep(
             }
             Spacer(modifier = Modifier.width(16.dp))
             Button(
-                onClick = onNext, 
+                onClick = onNext,
                 enabled = uiState.password.isNotBlank() && uiState.testResult is ConnectionResult.Success
-            ) { Text("Finish") }
+            ) { Text("Save") }
         }
     }
 }

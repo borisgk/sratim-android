@@ -31,15 +31,7 @@ android {
 
     buildTypes {
         debug {
-            // Enable minor optimizations in debug to help with Compose performance
             isDefault = true
-        }
-        
-        create("staging") {
-            initWith(getByName("release"))
-            matchingFallbacks += listOf("release")
-            signingConfig = signingConfigs.getByName("debug") // Still use debug key for easy install
-            isDebuggable = true
         }
 
         release {
@@ -47,6 +39,17 @@ android {
             if (isCi) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            optimization {
+                enable = true
+            }
+            proguardFiles("proguard-rules.pro")
+        }
+
+        create("staging") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug") // Still use debug key for easy install
+            isDebuggable = false
         }
     }
 
@@ -56,10 +59,14 @@ android {
     }
 }
 
+composeCompiler {
+    stabilityConfigurationFiles.add(rootProject.layout.projectDirectory.file("compose_stability.conf"))
+}
+
 dependencies {
     implementation(project(":core"))
     implementation(project(":core-ui"))
-    
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(platform(libs.androidx.compose.bom))
@@ -73,7 +80,9 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    
+    implementation(libs.androidx.profileinstaller)
+
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

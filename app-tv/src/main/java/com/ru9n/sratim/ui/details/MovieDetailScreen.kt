@@ -13,17 +13,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.tv.material3.Button
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
@@ -40,7 +41,7 @@ fun MovieDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         if (uiState.isLoading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else if (uiState.error != null) {
@@ -52,30 +53,28 @@ fun MovieDetailScreen(
         } else if (uiState.movie != null) {
             val movie = uiState.movie!!
 
-            // Backdrop Background
+            // Backdrop with cached horizontal vignette drawn on the same RenderNode
             AsyncImage(
                 model = movie.backdropUrl,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-                alpha = 0.7f // Increased visibility
-            )
-
-            // Gradient Overlay - lightened for better backdrop visibility
-            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.horizontalGradient(
+                    .drawWithCache {
+                        val gradient = Brush.horizontalGradient(
                             colors = listOf(
-                                Color.Black.copy(alpha = 0.9f),
-                                Color.Black.copy(alpha = 0.3f),
-                                Color.Transparent
+                                Color.Black.copy(alpha = 0.92f),
+                                Color.Black.copy(alpha = 0.50f),
+                                Color.Black.copy(alpha = 0.30f)
                             ),
                             startX = 0f,
-                            endX = Float.POSITIVE_INFINITY
+                            endX = size.width
                         )
-                    )
+                        onDrawWithContent {
+                            drawContent()
+                            drawRect(gradient)
+                        }
+                    },
+                contentScale = ContentScale.Crop
             )
 
             // Content
@@ -110,7 +109,7 @@ fun MovieDetailScreen(
                         fontWeight = FontWeight.Bold,
                         maxLines = 2
                     )
-                    
+
                     Text(
                         text = "Released: ${movie.releaseDate}",
                         style = MaterialTheme.typography.labelLarge,
@@ -119,7 +118,7 @@ fun MovieDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Play Button - moved up to be ALWAYS accessible
+                    // Play Button - always accessible
                     Button(
                         onClick = { onPlayClick(movie.id) },
                         modifier = Modifier.width(200.dp)
@@ -129,7 +128,7 @@ fun MovieDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Scrollable Overview - now fills the remaining space
+                    // Scrollable Overview
                     Box(modifier = Modifier.weight(1f)) {
                         Text(
                             text = movie.overview,

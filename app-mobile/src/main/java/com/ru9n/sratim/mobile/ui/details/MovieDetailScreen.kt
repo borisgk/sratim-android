@@ -1,6 +1,5 @@
 package com.ru9n.sratim.mobile.ui.details
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -46,7 +45,7 @@ fun MovieDetailScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black).padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null) {
@@ -70,7 +69,7 @@ fun MovieDetailScreen(
                             .height(240.dp),
                         contentScale = ContentScale.Crop
                     )
-                    
+
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.Top) {
                             ElevatedCard(
@@ -99,18 +98,18 @@ fun MovieDetailScreen(
                                 )
                             }
                         }
-                        
+
                         Spacer(modifier = Modifier.height(24.dp))
-                        
+
                         Button(
                             onClick = { onPlayClick(movie.id) },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Play")
                         }
-                        
+
                         Spacer(modifier = Modifier.height(24.dp))
-                        
+
                         Text(
                             text = "Overview",
                             style = MaterialTheme.typography.titleLarge,

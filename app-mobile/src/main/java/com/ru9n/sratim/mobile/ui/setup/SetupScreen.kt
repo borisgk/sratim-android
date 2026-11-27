@@ -1,8 +1,11 @@
 package com.ru9n.sratim.mobile.ui.setup
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,10 +18,13 @@ import com.ru9n.sratim.core.viewmodel.ConnectionResult
 import com.ru9n.sratim.core.viewmodel.SetupUiState
 import com.ru9n.sratim.core.viewmodel.SetupViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SetupScreen(
     viewModel: SetupViewModel,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    isSettings: Boolean = false,
+    onCancel: (() -> Unit)? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -28,8 +34,33 @@ fun SetupScreen(
         }
     }
 
+    BackHandler(enabled = uiState.currentStep > 0 || onCancel != null) {
+        if (uiState.currentStep > 0) {
+            viewModel.previousStep()
+        } else {
+            onCancel?.invoke()
+        }
+    }
+
     Scaffold(
-        containerColor = Color.Black
+        containerColor = Color.Black,
+        topBar = {
+            if (isSettings && onCancel != null) {
+                TopAppBar(
+                    title = { Text("Settings") },
+                    navigationIcon = {
+                        IconButton(onClick = onCancel) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Black,
+                        titleContentColor = Color.White,
+                        navigationIconContentColor = Color.White
+                    )
+                )
+            }
+        }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -40,17 +71,20 @@ fun SetupScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "Sratim Setup",
-                style = MaterialTheme.typography.headlineLarge
-            )
-            Spacer(modifier = Modifier.height(32.dp))
+            if (!isSettings) {
+                Text(
+                    text = "Sratim Setup",
+                    style = MaterialTheme.typography.headlineLarge
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+            }
 
             when (uiState.currentStep) {
                 0 -> ServerStep(
                     value = uiState.serverUrl,
                     onValueChange = viewModel::onServerUrlChange,
-                    onNext = viewModel::nextStep
+                    onNext = viewModel::nextStep,
+                    onLogout = if (isSettings) viewModel::logout else null
                 )
                 1 -> UsernameStep(
                     value = uiState.username,
@@ -66,7 +100,7 @@ fun SetupScreen(
                     onBack = viewModel::previousStep
                 )
             }
-            
+
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = "v${com.ru9n.sratim.mobile.BuildConfig.VERSION_NAME}",
@@ -79,7 +113,12 @@ fun SetupScreen(
 }
 
 @Composable
-fun ServerStep(value: String, onValueChange: (String) -> Unit, onNext: () -> Unit) {
+fun ServerStep(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onNext: () -> Unit,
+    onLogout: (() -> Unit)? = null
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = "Server Address", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
@@ -93,6 +132,12 @@ fun ServerStep(value: String, onValueChange: (String) -> Unit, onNext: () -> Uni
         Spacer(modifier = Modifier.height(24.dp))
         Button(onClick = onNext, enabled = value.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
             Text("Next")
+        }
+        if (onLogout != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
+                Text("Sign Out")
+            }
         }
     }
 }
@@ -148,23 +193,23 @@ fun PasswordStep(
         }
 
         Button(
-            onClick = onTest, 
+            onClick = onTest,
             enabled = !uiState.isTesting && uiState.password.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(if (uiState.isTesting) "Connecting..." else "Verify Credentials")
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Row(modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Back") }
             Spacer(modifier = Modifier.width(16.dp))
             Button(
-                onClick = onNext, 
+                onClick = onNext,
                 enabled = uiState.testResult is ConnectionResult.Success,
                 modifier = Modifier.weight(1f)
-            ) { Text("Finish") }
+            ) { Text("Save") }
         }
     }
 }

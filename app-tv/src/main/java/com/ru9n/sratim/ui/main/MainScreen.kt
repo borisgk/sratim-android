@@ -16,15 +16,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
@@ -32,11 +42,14 @@ import androidx.compose.ui.unit.dp
 import androidx.tv.material3.Button
 import androidx.tv.material3.Card
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import com.ru9n.sratim.core.network.Library
 import com.ru9n.sratim.core.viewmodel.MainViewModel
 import com.ru9n.sratim.core.viewmodel.RecentlyWatchedUiModel
+import kotlinx.coroutines.yield
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -44,11 +57,24 @@ fun MainScreen(
     viewModel: MainViewModel,
     onLibraryClick: (Int) -> Unit,
     onItemClick: (id: Int, type: String, showId: Int?) -> Unit = { _, _, _ -> },
+    onSettingsClick: () -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    val firstContentFocusRequester = remember { FocusRequester() }
+    val settingsFocusRequester = remember { FocusRequester() }
+    var hasRequestedInitialFocus by rememberSaveable { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    val hasContent = uiState.recentlyWatched.isNotEmpty() || uiState.libraries.isNotEmpty()
+    LaunchedEffect(hasContent) {
+        if (hasContent && !hasRequestedInitialFocus) {
+            hasRequestedInitialFocus = true
+            yield()
+            runCatching { firstContentFocusRequester.requestFocus() }
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
         if (uiState.isLoading && uiState.libraries.isEmpty()) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else if (uiState.error != null && uiState.libraries.isEmpty()) {
@@ -67,8 +93,8 @@ fun MainScreen(
                         Text("Retry")
                     }
                     Spacer(modifier = Modifier.width(16.dp))
-                    Button(onClick = viewModel::logout) {
-                        Text("Reset Settings")
+                    Button(onClick = onSettingsClick) {
+                        Text("Settings")
                     }
                 }
             }
@@ -77,23 +103,46 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(vertical = 48.dp),
+                    .padding(vertical = 36.dp),
             ) {
                 if (uiState.recentlyWatched.isNotEmpty()) {
-                    Text(
-                        text = "Recently Watched",
-                        style = MaterialTheme.typography.displayMedium,
-                        modifier = Modifier.padding(start = 48.dp, bottom = 20.dp),
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 48.dp, end = 48.dp, bottom = 20.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Recently Watched",
+                            style = MaterialTheme.typography.displayMedium,
+                        )
+                        SettingsHeaderButton(
+                            onClick = onSettingsClick,
+                            modifier = Modifier
+                                .focusRequester(settingsFocusRequester)
+                                .focusProperties { down = firstContentFocusRequester },
+                        )
+                    }
 
                     LazyRow(
                         contentPadding = PaddingValues(horizontal = 48.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.focusProperties { up = settingsFocusRequester },
                     ) {
-                        items(uiState.recentlyWatched) { item ->
+                        itemsIndexed(
+                            items = uiState.recentlyWatched,
+                            key = { _, item -> "${item.type}_${item.id}" },
+                            contentType = { _, item -> item.type },
+                        ) { index, item ->
                             RecentlyWatchedCard(
                                 item = item,
-                                onClick = { onItemClick(item.id, item.type, item.showId) },
+                                onItemClick = onItemClick,
+                                modifier = if (index == 0) {
+                                    Modifier.focusRequester(firstContentFocusRequester)
+                                } else {
+                                    Modifier
+                                },
                             )
                         }
                     }
@@ -101,28 +150,54 @@ fun MainScreen(
                     Spacer(modifier = Modifier.height(36.dp))
                 }
 
-                Text(
-                    text = "Libraries",
-                    style = MaterialTheme.typography.displayMedium,
-                    modifier = Modifier.padding(start = 48.dp, bottom = 20.dp),
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 48.dp, end = 48.dp, bottom = 20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Libraries",
+                        style = MaterialTheme.typography.displayMedium,
+                    )
+                    if (uiState.recentlyWatched.isEmpty()) {
+                        SettingsHeaderButton(
+                            onClick = onSettingsClick,
+                            modifier = Modifier
+                                .focusRequester(settingsFocusRequester)
+                                .focusProperties { down = firstContentFocusRequester },
+                        )
+                    }
+                }
 
+                val hasRecent = uiState.recentlyWatched.isNotEmpty()
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 48.dp),
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    modifier = if (!hasRecent) {
+                        Modifier.focusProperties { up = settingsFocusRequester }
+                    } else {
+                        Modifier
+                    },
                 ) {
-                    items(uiState.libraries) { library ->
-                        Card(
-                            onClick = { onLibraryClick(library.id) },
-                            modifier = Modifier.size(width = 200.dp, height = 150.dp),
-                        ) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(text = library.name, style = MaterialTheme.typography.headlineSmall)
-                                    Text(text = library.type, style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
+                    itemsIndexed(
+                        items = uiState.libraries,
+                        key = { _, library -> library.id },
+                        contentType = { _, _ -> "library" },
+                    ) { index, library ->
+                        val cardModifier = if (!hasRecent && index == 0) {
+                            Modifier
+                                .size(width = 200.dp, height = 150.dp)
+                                .focusRequester(firstContentFocusRequester)
+                        } else {
+                            Modifier.size(width = 200.dp, height = 150.dp)
                         }
+                        LibraryCard(
+                            library = library,
+                            onLibraryClick = onLibraryClick,
+                            modifier = cardModifier,
+                        )
                     }
                 }
             }
@@ -132,15 +207,56 @@ fun MainScreen(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
+private fun LibraryCard(
+    library: Library,
+    onLibraryClick: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        onClick = { onLibraryClick(library.id) },
+        modifier = modifier,
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = library.name, style = MaterialTheme.typography.headlineSmall)
+                Text(text = library.type, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun SettingsHeaderButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Settings,
+            contentDescription = "Settings",
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Settings")
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
 fun RecentlyWatchedCard(
     item: RecentlyWatchedUiModel,
-    onClick: () -> Unit,
+    onItemClick: (id: Int, type: String, showId: Int?) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier.width(124.dp),
+        modifier = modifier.width(124.dp),
     ) {
         Card(
-            onClick = onClick,
+            onClick = { onItemClick(item.id, item.type, item.showId) },
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(2f / 3f),

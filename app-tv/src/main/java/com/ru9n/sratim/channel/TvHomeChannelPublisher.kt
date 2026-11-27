@@ -19,6 +19,8 @@ import com.ru9n.sratim.core.network.RecentlyWatchedItem
 import com.ru9n.sratim.core.viewmodel.RecentlyWatchedUiModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 @Suppress("RestrictedApi")
@@ -26,30 +28,38 @@ object TvHomeChannelPublisher {
     private const val TAG = "TvHomeChannel"
     private const val PREFS_NAME = "sratim_tv_channel_prefs"
     private const val KEY_CHANNEL_ID = "default_channel_id"
+    private const val KEY_CHANNEL_LOGO_VERSION = "channel_logo_version"
+    private const val CURRENT_LOGO_VERSION = 2
     private const val CHANNEL_INTERNAL_ID = "sratim_recently_watched"
+
+    private val publishMutex = Mutex()
+
+    @Volatile
+    private var lastPublishedSignature: Int? = null
 
     /**
      * Fetches the latest Recently Watched items from Sratim API and publishes them
-     * to the Android TV / Google TV Home screen (both the app's default row and Watch Next).
+     * to the Android TV / Google TV Home screen (used by boot/system broadcast receiver).
      */
     suspend fun fetchAndPublish(context: Context) = withContext(Dispatchers.IO) {
         try {
-            val configManager = ConfigManager(context.applicationContext)
+            val appContext = context.applicationContext
+            val configManager = ConfigManager(appContext)
             val config = configManager.configFlow.first()
             if (!config.isValid) {
                 Log.d(TAG, "Config not valid yet, skipping channel publish")
                 return@withContext
             }
 
-            val api = NetworkClient.createApi(context.applicationContext, config.serverUrl, config.token)
+            val api = NetworkClient.createApi(appContext, config.serverUrl, config.token)
                 ?: return@withContext
             val response = api.getRecentlyWatched()
             if (response.isSuccessful && response.body()?.success == true) {
-                val serverBaseUrl = NetworkClient.getBaseUrl(context.applicationContext, config.serverUrl)
+                val serverBaseUrl = NetworkClient.getBaseUrl(appContext, config.serverUrl)
                 val items = response.body()?.items.orEmpty().map { item ->
                     toUiModel(item, serverBaseUrl)
                 }
-                publishRecentlyWatched(context.applicationContext, items)
+                publishRecentlyWatched(appContext, items)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch and publish TV channel", e)
@@ -58,25 +68,46 @@ object TvHomeChannelPublisher {
 
     /**
      * Publishes a list of [RecentlyWatchedUiModel] items to the Sratim default TV channel
-     * and the system Watch Next (Continue Watching) row.
+     * and the system Watch Next (Continue Watching) row, skipping redundant SQLite writes
+     * if the item list and rounded progress values have not changed.
      */
     suspend fun publishRecentlyWatched(
         context: Context,
         items: List<RecentlyWatchedUiModel>
     ) = withContext(Dispatchers.IO) {
-        try {
-            val channelId = getOrCreateDefaultChannel(context)
-            if (channelId == -1L) {
-                Log.w(TAG, "Could not obtain valid channelId")
-                return@withContext
-            }
+        publishMutex.withLock {
+            try {
+                val signature = computeSignature(items)
+                if (lastPublishedSignature == signature) {
+                    return@withLock
+                }
 
-            updateChannelPrograms(context, channelId, items)
-            updateWatchNextPrograms(context, items)
-            Log.d(TAG, "Published ${items.size} items to TV channel $channelId and Watch Next")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error publishing recently watched to TV home screen", e)
+                val channelId = getOrCreateDefaultChannel(context)
+                if (channelId == -1L) {
+                    Log.w(TAG, "Could not obtain valid channelId")
+                    return@withLock
+                }
+
+                updateChannelPrograms(context, channelId, items)
+                updateWatchNextPrograms(context, items)
+                lastPublishedSignature = signature
+                Log.d(TAG, "Published ${items.size} items to TV channel $channelId and Watch Next")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error publishing recently watched to TV home screen", e)
+            }
         }
+    }
+
+    private fun computeSignature(items: List<RecentlyWatchedUiModel>): Int {
+        var hash = items.size
+        for (item in items) {
+            hash = 31 * hash + item.id
+            hash = 31 * hash + item.type.hashCode()
+            hash = 31 * hash + item.progressPercent.toInt()
+            hash = 31 * hash + item.backdropUrl.hashCode()
+            hash = 31 * hash + item.posterUrl.hashCode()
+        }
+        return hash
     }
 
     private fun getOrCreateDefaultChannel(context: Context): Long {
@@ -142,12 +173,14 @@ object TvHomeChannelPublisher {
             ) ?: return -1L
 
             channelId = ContentUris.parseId(channelUri)
-            prefs.edit().putLong(KEY_CHANNEL_ID, channelId).apply()
-
             storeLogo(context, channelId)
             TvContractCompat.requestChannelBrowsable(context, channelId)
+            prefs.edit()
+                .putLong(KEY_CHANNEL_ID, channelId)
+                .putInt(KEY_CHANNEL_LOGO_VERSION, CURRENT_LOGO_VERSION)
+                .apply()
             Log.i(TAG, "Created new default TV channel: $channelId")
-        } else {
+        } else if (prefs.getInt(KEY_CHANNEL_LOGO_VERSION, 0) < CURRENT_LOGO_VERSION) {
             context.contentResolver.update(
                 TvContractCompat.buildChannelUri(channelId),
                 channelBuilder.build().toContentValues(),
@@ -156,6 +189,7 @@ object TvHomeChannelPublisher {
             )
             storeLogo(context, channelId)
             TvContractCompat.requestChannelBrowsable(context, channelId)
+            prefs.edit().putInt(KEY_CHANNEL_LOGO_VERSION, CURRENT_LOGO_VERSION).apply()
         }
 
         return channelId
@@ -165,6 +199,7 @@ object TvHomeChannelPublisher {
         try {
             val bitmap = createOpaqueLogoBitmap(context)
             ChannelLogoUtils.storeChannelLogo(context, channelId, bitmap)
+            bitmap.recycle()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to store channel logo", e)
         }
@@ -424,10 +459,11 @@ object TvHomeChannelPublisher {
             item.posterPath
         }
         val posterUrl = if (!effectivePoster.isNullOrEmpty()) {
-            "${serverBaseUrl}images/posters/w500$effectivePoster"
+            "${serverBaseUrl}images/posters/w500/${effectivePoster.removePrefix("/")}"
         } else ""
-        val backdropUrl = if (!item.backdropPath.isNullOrEmpty()) {
-            "${serverBaseUrl}images/backdrops/original${item.backdropPath}"
+        val backdropPath = item.backdropPath
+        val backdropUrl = if (!backdropPath.isNullOrEmpty()) {
+            "${serverBaseUrl}images/backdrops/w780/${backdropPath.removePrefix("/")}"
         } else ""
         val dur = item.duration ?: 0.0
         val pos = item.position ?: 0.0

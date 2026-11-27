@@ -1,6 +1,5 @@
 package com.ru9n.sratim.mobile.ui.library
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -13,8 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.ru9n.sratim.core.viewmodel.LibraryItemUiModel
 import com.ru9n.sratim.core.viewmodel.LibraryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +46,7 @@ fun LibraryScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black).padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null) {
@@ -60,33 +61,49 @@ fun LibraryScreen(
                     contentPadding = PaddingValues(8.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    items(uiState.items) { item ->
-                        ElevatedCard(
-                            onClick = { onItemClick(item.id, item.type) },
-                            modifier = Modifier
-                                .padding(8.dp)
-                                .fillMaxWidth()
-                        ) {
-                            Column {
-                                AsyncImage(
-                                    model = item.posterUrl,
-                                    contentDescription = item.title,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(2f / 3f),
-                                    contentScale = ContentScale.Crop
-                                )
-                                Text(
-                                    text = item.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    maxLines = 2,
-                                    modifier = Modifier.padding(8.dp)
-                                )
-                            }
-                        }
+                    items(
+                        items = uiState.items,
+                        key = { it.id },
+                        contentType = { it.type }
+                    ) { item ->
+                        MobileLibraryPosterCard(
+                            item = item,
+                            onItemClick = onItemClick
+                        )
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MobileLibraryPosterCard(
+    item: LibraryItemUiModel,
+    onItemClick: (Int, String) -> Unit
+) {
+    ElevatedCard(
+        onClick = { onItemClick(item.id, item.type) },
+        modifier = Modifier
+            .padding(8.dp)
+            .fillMaxWidth()
+    ) {
+        Column {
+            AsyncImage(
+                model = item.posterUrl,
+                contentDescription = item.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(2f / 3f),
+                contentScale = ContentScale.Crop
+            )
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(8.dp)
+            )
         }
     }
 }

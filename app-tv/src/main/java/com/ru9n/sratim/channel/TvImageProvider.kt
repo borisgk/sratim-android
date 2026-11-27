@@ -10,27 +10,20 @@ import com.ru9n.sratim.core.data.ConfigManager
 import com.ru9n.sratim.core.network.NetworkClient
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
-import java.util.concurrent.TimeUnit
 
 /**
- * Proxies authenticated Sratim artwork (posters and backdrops) via a `content://` URI
+ * Proxies Sratim artwork (posters and backdrops) via a `content://` URI
  * so that Google TV Launcher (`com.google.android.apps.tv.launcherx`) can load images
- * that require the Sratim `Cookie: session=...` header.
+ * reliably using the shared HTTP/2 connection pool and size fallback pipeline.
  */
 class TvImageProvider : ContentProvider() {
     companion object {
         const val AUTHORITY = "com.ru9n.sratim.tv.images"
         private const val TAG = "TvImageProvider"
-
-        private val httpClient = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
 
         fun buildImageUri(relativePath: String): Uri {
             val cleanPath = relativePath.trimStart('/')
@@ -42,21 +35,22 @@ class TvImageProvider : ContentProvider() {
 
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor? {
         val context = context ?: return null
+        val appContext = context.applicationContext
         val relativePath = uri.path?.trimStart('/') ?: return null
         if (relativePath.isEmpty()) return null
 
-        val cacheDir = File(context.cacheDir, "tv_channel_art").apply { mkdirs() }
+        val cacheDir = File(appContext.cacheDir, "tv_channel_art").apply { mkdirs() }
         val cacheKey = sha256(relativePath)
         val cachedFile = File(cacheDir, "$cacheKey.jpg")
 
         if (!cachedFile.exists() || cachedFile.length() == 0L) {
             try {
                 val config = runBlocking {
-                    ConfigManager(context.applicationContext).configFlow.first()
+                    ConfigManager(appContext).configFlow.first()
                 }
                 if (!config.isValid) return null
 
-                val baseUrl = NetworkClient.getBaseUrl(context.applicationContext, config.serverUrl)
+                val baseUrl = NetworkClient.getBaseUrl(appContext, config.serverUrl)
                 val fullUrl = "$baseUrl$relativePath"
 
                 val requestBuilder = Request.Builder().url(fullUrl)
@@ -64,7 +58,8 @@ class TvImageProvider : ContentProvider() {
                     requestBuilder.header("Cookie", "session=${config.token.trim()}")
                 }
 
-                httpClient.newCall(requestBuilder.build()).execute().use { response ->
+                val client = NetworkClient.getImageOkHttpClient(appContext)
+                client.newCall(requestBuilder.build()).execute().use { response ->
                     if (!response.isSuccessful) {
                         Log.w(TAG, "Failed to download $fullUrl: HTTP ${response.code}")
                         return null

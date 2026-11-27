@@ -26,6 +26,7 @@ dependencies {
     api(libs.androidx.core.ktx)
     api(libs.retrofit)
     api(libs.retrofit.gson)
+    api(libs.gson)
     api(libs.okhttp)
     api(libs.okhttp.logging)
     api(libs.androidx.datastore.preferences)

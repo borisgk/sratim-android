@@ -1,7 +1,6 @@
 package com.ru9n.sratim.mobile.ui.details
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,10 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.ru9n.sratim.core.viewmodel.ShowDetailViewModel
 import com.ru9n.sratim.core.viewmodel.EpisodeUiModel
+import com.ru9n.sratim.core.viewmodel.ShowDetailUiModel
+import com.ru9n.sratim.core.viewmodel.ShowDetailViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,10 +31,15 @@ fun ShowDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedSeason by remember { mutableStateOf<Int?>(null) }
 
+    val show = uiState.show
+    val seasons = remember(show) {
+        show?.seasons?.keys?.toList().orEmpty()
+    }
+
     // Auto-select first season when data loads
-    LaunchedEffect(uiState.show) {
-        if (selectedSeason == null && uiState.show != null && uiState.show!!.seasons.isNotEmpty()) {
-            selectedSeason = uiState.show!!.seasons.keys.minOrNull()
+    LaunchedEffect(seasons) {
+        if (selectedSeason == null && seasons.isNotEmpty()) {
+            selectedSeason = seasons.first()
         }
     }
 
@@ -41,7 +47,7 @@ fun ShowDetailScreen(
         containerColor = Color.Black,
         topBar = {
             TopAppBar(
-                title = { Text(uiState.show?.title ?: "Show Details") },
+                title = { Text(show?.title ?: "Show Details") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.Black,
                     scrolledContainerColor = Color.Black,
@@ -56,7 +62,7 @@ fun ShowDetailScreen(
             )
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black).padding(padding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (uiState.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (uiState.error != null) {
@@ -65,25 +71,33 @@ fun ShowDetailScreen(
                     color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.align(Alignment.Center).padding(16.dp)
                 )
-            } else if (uiState.show != null) {
-                val show = uiState.show!!
-                
+            } else if (show != null) {
+                val episodes = selectedSeason?.let { show.seasons[it] }.orEmpty()
+
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    item {
+                    item(key = "header", contentType = "header") {
                         ShowHeader(show)
                     }
-                    
-                    item {
-                        SeasonSelector(
-                            seasons = show.seasons.keys.toList().sorted(),
-                            selectedSeason = selectedSeason,
-                            onSeasonSelected = { selectedSeason = it }
-                        )
+
+                    if (seasons.isNotEmpty()) {
+                        item(key = "seasons", contentType = "seasons") {
+                            SeasonSelector(
+                                seasons = seasons,
+                                selectedSeason = selectedSeason,
+                                onSeasonSelected = { selectedSeason = it }
+                            )
+                        }
                     }
-                    
-                    val episodes = selectedSeason?.let { show.seasons[it] } ?: emptyList()
-                    items(episodes) { episode ->
-                        EpisodeItem(episode = episode, onClick = { onEpisodeClick(episode.id) })
+
+                    items(
+                        items = episodes,
+                        key = { it.id },
+                        contentType = { "episode" }
+                    ) { episode ->
+                        EpisodeItem(
+                            episode = episode,
+                            onEpisodeClick = onEpisodeClick
+                        )
                     }
                 }
             }
@@ -92,7 +106,7 @@ fun ShowDetailScreen(
 }
 
 @Composable
-fun ShowHeader(show: com.ru9n.sratim.core.viewmodel.ShowDetailUiModel) {
+fun ShowHeader(show: ShowDetailUiModel) {
     Column {
         AsyncImage(
             model = show.backdropUrl,
@@ -102,7 +116,7 @@ fun ShowHeader(show: com.ru9n.sratim.core.viewmodel.ShowDetailUiModel) {
                 .height(200.dp),
             contentScale = ContentScale.Crop
         )
-        
+
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.Top) {
                 ElevatedCard(
@@ -132,7 +146,7 @@ fun ShowHeader(show: com.ru9n.sratim.core.viewmodel.ShowDetailUiModel) {
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "Overview",
@@ -154,8 +168,11 @@ fun SeasonSelector(
     selectedSeason: Int?,
     onSeasonSelected: (Int) -> Unit
 ) {
+    val selectedIndex = remember(seasons, selectedSeason) {
+        selectedSeason?.let { seasons.indexOf(it) }?.takeIf { it >= 0 } ?: 0
+    }
     ScrollableTabRow(
-        selectedTabIndex = selectedSeason?.let { seasons.indexOf(it) } ?: 0,
+        selectedTabIndex = selectedIndex,
         edgePadding = 16.dp,
         containerColor = Color.Black,
         divider = {}
@@ -171,12 +188,15 @@ fun SeasonSelector(
 }
 
 @Composable
-fun EpisodeItem(episode: EpisodeUiModel, onClick: () -> Unit) {
+fun EpisodeItem(
+    episode: EpisodeUiModel,
+    onEpisodeClick: (Int) -> Unit
+) {
     Card(
+        onClick = { onEpisodeClick(episode.id) },
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier.padding(8.dp),
@@ -204,9 +224,9 @@ fun EpisodeItem(episode: EpisodeUiModel, onClick: () -> Unit) {
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "${episode.episode}. ${episode.title}",
@@ -218,10 +238,10 @@ fun EpisodeItem(episode: EpisodeUiModel, onClick: () -> Unit) {
                     text = episode.overview,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            
+
             Icon(
                 Icons.Default.PlayArrow,
                 contentDescription = "Play",

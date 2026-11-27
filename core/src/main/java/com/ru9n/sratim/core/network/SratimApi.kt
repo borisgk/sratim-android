@@ -1,10 +1,12 @@
 package com.ru9n.sratim.core.network
 
 import com.google.gson.annotations.SerializedName
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface SratimApi {
     @POST("api/v1/login")
@@ -14,135 +16,162 @@ interface SratimApi {
     suspend fun getLibraries(): Response<LibraryResponse>
 
     @GET("api/v1/library")
-    suspend fun getLibraryItems(@retrofit2.http.Query("id") libraryId: Int): Response<LibraryItemsResponse>
+    suspend fun getLibraryItems(@Query("id") libraryId: Int): Response<LibraryItemsResponse>
 
     @GET("api/v1/movie")
-    suspend fun getMovieDetails(@retrofit2.http.Query("id") movieId: Int): Response<MovieDetailResponse>
+    suspend fun getMovieDetails(@Query("id") movieId: Int): Response<MovieDetailResponse>
 
     @GET("api/v1/show")
-    suspend fun getShowDetails(@retrofit2.http.Query("id") showId: Int): Response<ShowDetailResponse>
+    suspend fun getShowDetails(@Query("id") showId: Int): Response<ShowDetailResponse>
+
+    @GET("api/v1/episode")
+    suspend fun getEpisodeDetails(@Query("id") episodeId: Int): Response<EpisodeDetailResponse>
 
     @GET("api/v1/recently-watched")
     suspend fun getRecentlyWatched(): Response<RecentlyWatchedResponse>
 
     @POST("api/watch/event")
     suspend fun postWatchEvent(@Body event: WatchEventRequest): Response<Unit>
+
+    @GET("player")
+    suspend fun getPlayerHtml(
+        @Query("id") movieId: Int? = null,
+        @Query("episode_id") episodeId: Int? = null
+    ): Response<ResponseBody>
 }
 
 data class LoginRequest(
-    val username: String,
-    val password: String
+    @SerializedName("username") val username: String,
+    @SerializedName("password") val password: String
 )
 
 data class LoginResponse(
-    val success: Boolean,
-    val token: String?,
-    val error: String?,
-    @SerializedName("is_admin") val isAdmin: Boolean?
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("token") val token: String? = null,
+    @SerializedName("error") val error: String? = null,
+    @SerializedName("is_admin") val isAdmin: Boolean? = null
 )
 
 data class LibraryResponse(
-    val success: Boolean,
-    val libraries: List<Library>?,
-    val error: String?
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("libraries") val libraries: List<Library>? = null,
+    @SerializedName("error") val error: String? = null
 )
 
 data class Library(
-    val id: Int,
-    val name: String,
-    val type: String
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("name") val name: String = "",
+    @SerializedName("type") val type: String = ""
 )
 
 data class LibraryItemsResponse(
-    val success: Boolean,
-    val items: List<LibraryItem>?,
-    val error: String?
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("items") val items: List<LibraryItem>? = null,
+    @SerializedName("error") val error: String? = null
 )
 
 data class LibraryItem(
-    val id: Int,
-    val title: String,
-    @SerializedName("poster_path") val posterPath: String,
-    @SerializedName("tmdb_id") val tmdbId: String?,
-    val type: String
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("title") val title: String = "",
+    @SerializedName("poster_path") val posterPath: String = "",
+    @SerializedName("tmdb_id") val tmdbId: String? = null,
+    @SerializedName("type") val type: String = ""
 )
 
 data class MovieDetailResponse(
-    val success: Boolean,
-    val movie: MovieDetail?,
-    val error: String?
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("movie") val movie: MovieDetail? = null,
+    @SerializedName("error") val error: String? = null
 )
 
 data class MovieDetail(
-    val id: Int,
-    @SerializedName("library_id") val libraryId: Int,
-    val title: String,
-    val overview: String,
-    @SerializedName("poster_path") val posterPath: String,
-    @SerializedName("backdrop_path") val backdropPath: String,
-    @SerializedName("release_date") val releaseDate: String,
-    @SerializedName("tmdb_id") val tmdbId: String?,
-    @SerializedName("file_size") val fileSize: Long?,
-    @SerializedName("filesize") val filesize: Long?,
-    val runtime: Int?,
-    val duration: Int?,
-    @SerializedName("file_path") val filePath: String,
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("library_id") val libraryId: Int = 0,
+    @SerializedName("title") val title: String = "",
+    @SerializedName("overview") val overview: String = "",
+    @SerializedName("poster_path") val posterPath: String = "",
+    @SerializedName("backdrop_path") val backdropPath: String = "",
+    @SerializedName("release_date") val releaseDate: String = "",
+    @SerializedName("tmdb_id") val tmdbId: String? = null,
+    @SerializedName("file_size") val fileSize: Long? = null,
+    @SerializedName("filesize") val filesize: Long? = null,
+    @SerializedName("runtime") val runtime: Int? = null,
+    @SerializedName("duration") val duration: Int? = null,
+    @SerializedName("duration_sec") val durationSec: Double? = null,
+    @SerializedName("file_path") val filePath: String = "",
     @SerializedName("resume_position") val resumePosition: Double? = null,
-    @SerializedName("position") val position: Double? = null
+    @SerializedName("position") val position: Double? = null,
+    @SerializedName("audio_tracks") val audioTracks: List<AudioTrackDto>? = null
 )
 
 data class ShowDetailResponse(
-    val success: Boolean,
-    val show: ShowDetail?,
-    val error: String?
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("show") val show: ShowDetail? = null,
+    @SerializedName("error") val error: String? = null
 )
 
 data class ShowDetail(
-    val id: Int,
-    @SerializedName("library_id") val libraryId: Int,
-    val title: String,
-    val overview: String,
-    @SerializedName("poster_path") val posterPath: String,
-    @SerializedName("backdrop_path") val backdropPath: String,
-    @SerializedName("tmdb_id") val tmdbId: String?,
-    val episodes: List<Episode>?
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("library_id") val libraryId: Int = 0,
+    @SerializedName("title") val title: String = "",
+    @SerializedName("overview") val overview: String = "",
+    @SerializedName("poster_path") val posterPath: String = "",
+    @SerializedName("backdrop_path") val backdropPath: String = "",
+    @SerializedName("tmdb_id") val tmdbId: String? = null,
+    @SerializedName("episodes") val episodes: List<Episode>? = null
+)
+
+data class EpisodeDetailResponse(
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("episode") val episode: Episode? = null,
+    @SerializedName("error") val error: String? = null
 )
 
 data class Episode(
-    val id: Int,
-    val season: Int,
-    val episode: Int,
-    val title: String,
-    val overview: String,
-    @SerializedName("still_path") val stillPath: String?,
-    @SerializedName("poster_path") val posterPath: String?,
-    @SerializedName("file_size") val fileSize: Long?,
-    @SerializedName("filesize") val filesize: Long?,
-    val runtime: Int?,
-    val duration: Int?,
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("show_id") val showId: Int? = null,
+    @SerializedName("season") val season: Int = 0,
+    @SerializedName("episode") val episode: Int = 0,
+    @SerializedName("title") val title: String = "",
+    @SerializedName("overview") val overview: String = "",
+    @SerializedName("still_path") val stillPath: String? = null,
+    @SerializedName("poster_path") val posterPath: String? = null,
+    @SerializedName("file_size") val fileSize: Long? = null,
+    @SerializedName("filesize") val filesize: Long? = null,
+    @SerializedName("runtime") val runtime: Int? = null,
+    @SerializedName("duration") val duration: Int? = null,
+    @SerializedName("duration_sec") val durationSec: Double? = null,
     @SerializedName("resume_position") val resumePosition: Double? = null,
-    @SerializedName("position") val position: Double? = null
+    @SerializedName("position") val position: Double? = null,
+    @SerializedName("audio_tracks") val audioTracks: List<AudioTrackDto>? = null
+)
+
+data class AudioTrackDto(
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("label") val label: String? = null,
+    @SerializedName("codec") val codec: String? = null,
+    @SerializedName("language") val language: String? = null
 )
 
 data class RecentlyWatchedResponse(
-    val success: Boolean,
-    val items: List<RecentlyWatchedItem>?,
-    val error: String?
+    @SerializedName("success") val success: Boolean = false,
+    @SerializedName("items") val items: List<RecentlyWatchedItem>? = null,
+    @SerializedName("error") val error: String? = null
 )
 
 data class RecentlyWatchedItem(
-    val id: Int,
-    val type: String,
+    @SerializedName("id") val id: Int = 0,
+    @SerializedName("type") val type: String = "",
     @SerializedName("show_id") val showId: Int? = null,
     @SerializedName("show_title") val showTitle: String? = null,
-    val title: String,
-    val season: Int? = null,
-    val episode: Int? = null,
+    @SerializedName("title") val title: String = "",
+    @SerializedName("season") val season: Int? = null,
+    @SerializedName("episode") val episode: Int? = null,
     @SerializedName("poster_path") val posterPath: String? = null,
     @SerializedName("show_poster_path") val showPosterPath: String? = null,
     @SerializedName("backdrop_path") val backdropPath: String? = null,
-    val position: Double? = null,
-    val duration: Double? = null,
+    @SerializedName("position") val position: Double? = null,
+    @SerializedName("duration") val duration: Double? = null,
     @SerializedName("progress_percent") val progressPercent: Double? = null,
     @SerializedName("updated_at") val updatedAt: Long? = null
 )
@@ -150,8 +179,7 @@ data class RecentlyWatchedItem(
 data class WatchEventRequest(
     @SerializedName("movie_id") val movieId: Int? = null,
     @SerializedName("episode_id") val episodeId: Int? = null,
-    val event: String,
-    val position: Double,
-    val duration: Double
+    @SerializedName("event") val event: String,
+    @SerializedName("position") val position: Double,
+    @SerializedName("duration") val duration: Double
 )
-
